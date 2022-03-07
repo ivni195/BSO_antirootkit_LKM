@@ -38,12 +38,12 @@ void check_sys_call_hooks(void){
     }
 }
 
-void check_MP_bit(void){
-    if (IS_MP_BIT_SET){
-        printk(INFO("MP bit is set (as it should be)."));
+void check_WP_bit(void){
+    if (IS_WP_BIT_SET){
+        printk(INFO("WP bit is set (as it should be)."));
     }
     else{
-        printk(WARNING("MP bit is cleared. Looks like someone has messed with the cr0 register.\nSetting MP bit back..."));
+        printk(WARNING("WP bit is cleared (it should be set).\nSetting WP bit back..."));
         enable_memory_protection();
     }
 }
@@ -52,8 +52,8 @@ void checks_run(void){
 #ifdef CHECK_SYS_CALL_HOOKS
     check_sys_call_hooks();
 #endif
-#ifdef CHECK_MP_BIT
-    check_MP_bit();
+#ifdef CHECK_WP_BIT
+    check_WP_bit();
 #endif
 }
 
