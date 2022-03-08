@@ -5,9 +5,8 @@
 #include <linux/unistd.h>   // Syscalls numbers
 #include <linux/slab.h>     // Allocate/free kernel memory
 #include <linux/dirent.h>
-#include "memory_prot.h"
 #include "utils.h"
-#include "comp_sys_calls.h"
+#include "check_sys_calls.h"
 #include "checks.h"
 
 // Module Information
@@ -17,8 +16,6 @@ MODULE_DESCRIPTION("Antirootkit LKM.");
 MODULE_VERSION("1.0");
 
 
-unsigned long *sys_call_table;
-unsigned long *sys_call_table_saved;
 
 
 static int __init anti_rk_init(void) {

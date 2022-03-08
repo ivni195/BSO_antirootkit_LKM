@@ -1,7 +1,7 @@
 #include "utils.h"
 
 
-//unsigned long *find_sys_call_table_addr(void) {
+//unsigned long *setup_sys_call_check(void) {
 ////    Create kernel probe and set kp.symbol_name to the desired function
 //    struct kprobe kp = {
 //            .symbol_name = "kallsyms_lookup_name"

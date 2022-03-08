@@ -2,18 +2,11 @@
 
 bool setup_checks(void){
 #ifdef CHECK_SYS_CALL_HOOKS
-    find_sys_call_table_addr();
-    if (sys_call_table == NULL){
-        printk(WARNING("sys_call_table lookup failed."));
+    if(!setup_sys_call_check()){
+        printk(WARNING("Sys call hooks check setup failed."));
         return false;
     }
 
-    save_sys_call_table();
-
-    if (sys_call_table_saved == NULL){
-        printk(WARNING("sys_call_table backup failed."));
-        return false;
-    }
     printk(INFO("Sys call hooks check setup succesfully."));
 #endif
 
@@ -22,15 +15,14 @@ bool setup_checks(void){
 
 void cleanup_checks(void){
 #ifdef CHECK_SYS_CALL_HOOKS
-    if (sys_call_table_saved != NULL)
-        cleanup_sys_call_table();
+    cleanup_sys_call_table();
 #endif
 }
 
 void check_sys_call_hooks(void){
     int changed = compare_sys_call_table();
     if (changed){
-        printk(WARNING("Some sys_call_table entries has been modified.\nRestoring original entries..."));
+        printk(WARNING("Some sys_call_table entries have been modified.\nTrying to restore original entries..."));
         restore_sys_call_table();
     }
     else{

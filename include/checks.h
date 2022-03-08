@@ -2,7 +2,7 @@
 #define BSO_ANTIROOTKIT_LKM_CHECKS_H
 
 #include "config.h"
-#include "comp_sys_calls.h"
+#include "check_sys_calls.h"
 #include "config.h"
 
 bool setup_checks(void);

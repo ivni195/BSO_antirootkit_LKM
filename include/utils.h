@@ -12,7 +12,6 @@
 #define IS_WP_BIT_SET (read_cr0() & WP_BIT) == WP_BIT
 
 typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
-typedef asmlinkage unsigned long (*pt_regs_t)(const struct pt_regs *regs);
-
-
 #endif //BSO_ANTIROOTKIT_LKM_UTILS_H
+
+typedef asmlinkage unsigned long (*pt_regs_t)(const struct pt_regs *regs);
