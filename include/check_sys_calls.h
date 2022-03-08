@@ -34,8 +34,12 @@ int compare_sys_call_table(void);
 /*
  * If we detected a hook, besides warning the user,
  * we can also restore the sys_call_table.
+ * action = 0 -> no changes detected
+ * action = 1 -> changes detected but recoverable from saved sys_call_table
+ * action = 2 -> chenges detected but unrecoverable from saved sys_call_table, bruteforce search the memory
+ *      to find original syscalls
  */
-void restore_sys_call_table(void);
+void restore_sys_call_table(int action);
 
 /*
  * Free the used memory.

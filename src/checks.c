@@ -20,14 +20,8 @@ void cleanup_checks(void){
 }
 
 void check_sys_call_hooks(void){
-    int changed = compare_sys_call_table();
-    if (changed){
-        printk(WARNING("Some sys_call_table entries have been modified.\nTrying to restore original entries..."));
-        restore_sys_call_table();
-    }
-    else{
-        printk(INFO("No hooks found."));
-    }
+    int action = compare_sys_call_table();
+    restore_sys_call_table(action);
 }
 
 void check_WP_bit(void){
