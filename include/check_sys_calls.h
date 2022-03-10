@@ -36,7 +36,7 @@ int compare_sys_call_table(void);
  * we can also restore the sys_call_table.
  * action = 0 -> no changes detected
  * action = 1 -> changes detected but recoverable from saved sys_call_table
- * action = 2 -> chenges detected but unrecoverable from saved sys_call_table, bruteforce search the memory
+ * action = 2 -> chenges detected but unrecoverable from saved sys_call_table, search the memory
  *      to find original syscalls
  */
 void restore_sys_call_table(int action);

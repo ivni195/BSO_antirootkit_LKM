@@ -4,7 +4,7 @@ It was created and tested on Ubuntu 20.04 with kernel 5.13.0 (x86_64).
 
 # Install
 ## Be careful!
-This module is not 100% stable so **use a virtual machine**
+This module is not stable so **use a virtual machine**
 to avoid any potential kernel panics or other nasty stuff.
 ## Linux headers
 Install linux kernel headers.
@@ -55,7 +55,7 @@ void setup_sys_call_check(void) {
 ```
 ### Disabling memory write protection
 Now we have the `sys_call_table` address, but we still can't overwrite its entries,
-because it's read-only. We read from the Intel manual 
+because it's located in read-only memory. The Intel manual reads: 
 > Write Protect (bit 16 of CR0) — When set, inhibits supervisor-level procedures from writing into read-
 > only pages; when clear, allows supervisor-level procedures to write into read-only pages (...).
 
@@ -82,18 +82,18 @@ void disable_memory_protection(void) {
 ### Hooking syscalls
 Now we just create our own function and overwrite `sys_call_table` with it.
 We also want to store somewhere the original function pointers, so we can call them from within
-our evil function.
+our evil hook.
 
 ### Detection
 #### Comparison
 This module creates a copy of `sys_call_table` on init. If our module was loaded before the rootkit,
-we can compare addresses present in the table with the saved ones. If an address doesn't match,
-it means that there is a hook. Then we can want the user and restore the original address.
+we can compare addresses from the table currently present in memory with the saved ones. 
+If addresses don't match, there is a hook. Then we can warn the user and restore the original address.
 
 #### is_kernel_text
 However, even if a rootkit was loaded first, we can still try to detect hooks.
 We iterate over every `sys_call_table` entry
-and call `is_kernel_text` which takes an address tells us whether it belongs to the 
+and call `is_kernel_text` which takes an address and tells us whether it belongs to the 
 core kernel text memory section.
 Similarily to `kallsyms_lookup_name`, this function isn't available by traditional means,
 so we also have to do some address lookup kung-fu and reimplement our own `local_is_kernel_text`.
@@ -130,5 +130,8 @@ static int local_is_kernel_text(unsigned long addr){
 }
 ```
 Whenever `local_is_kernel_text` returns 0, we warn the user and try to recover the address.
-TODO
-check call stacks and try to recover original address
+
+#### Recovering original syscalls
+We can, once again using `kallsyms_lookup_name`, search for original syscalls. For every `sys_call_table`
+entry that isn't originated in the core kernel text area, we take its name and call `kallsyms_lookup_name`.
+We retrieve the address and write it to `sys_call_table`.

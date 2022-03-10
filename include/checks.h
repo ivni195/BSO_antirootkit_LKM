@@ -3,7 +3,7 @@
 
 #include "config.h"
 #include "check_sys_calls.h"
-#include "config.h"
+#include "check_hidden.h"
 
 bool setup_checks(void);
 void cleanup_checks(void);

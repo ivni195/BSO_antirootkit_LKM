@@ -10,6 +10,15 @@ bool setup_checks(void){
     printk(INFO("Sys call hooks check setup succesfully."));
 #endif
 
+#ifdef CHECK_HIDDEN_MODULES
+    if(!(scan_procfs() && scan_sysfs())){
+        printk(WARNING("Hidden module check setup failed."));
+        return false;
+    }
+
+    printk(INFO("Hidden module check setup succesfully."));
+#endif
+
     return true;
 }
 
@@ -40,6 +49,10 @@ void checks_run(void){
 #endif
 #ifdef CHECK_WP_BIT
     check_WP_bit();
+#endif
+
+#ifdef CHECK_HIDDEN_MODULES
+    compare_fs();
 #endif
 }
 

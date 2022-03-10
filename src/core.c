@@ -13,7 +13,6 @@ MODULE_VERSION("1.0");
 
 static int __init anti_rk_init(void) {
     printk(INFO("Initializing..."));
-
 //    Setup all checks
     if(!setup_checks()){
         printk(WARNING("Checks setup failed."));
@@ -27,7 +26,7 @@ static int __init anti_rk_init(void) {
 
 
 static void __exit anti_rk_exit(void) {
-    checks_run();
+//    checks_run();
     cleanup_checks();
     printk(INFO("Cleanup done. Exiting..."));
 }

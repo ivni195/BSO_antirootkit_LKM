@@ -12,6 +12,8 @@ static unsigned long *sys_call_table_saved;
 static long *non_core_addrs;
 static int n;
 
+kallsyms_lookup_name_t local_kallsyms_lookup_name;
+
 static const char *get_name(long nr){
     switch (nr){
         case __NR_kill:
@@ -30,27 +32,27 @@ bool setup_sys_call_check(void) {
     struct kprobe kp = {
             .symbol_name = "kallsyms_lookup_name"
     };
-//    Create a function pointer that will later store the desired address
-    kallsyms_lookup_name_t kallsyms_lookup_name;
 //    Register kprobe, so it searches for the symbol given by kp.symbol_name
     register_kprobe(&kp);
 //    Retrieve address
-    kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
+    local_kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
 //    Now we can unregister kprobe and return the pointer to sys_call_table
     unregister_kprobe(&kp);
 
-    if(kallsyms_lookup_name == NULL)
+    if(local_kallsyms_lookup_name == NULL)
         return false;
 
-    sys_call_table = (unsigned long *) kallsyms_lookup_name("sys_call_table");
+    sys_call_table = (unsigned long *) local_kallsyms_lookup_name("sys_call_table");
     save_sys_call_table();
     if (sys_call_table_saved == NULL)
         return false;
 
     // Setup pointers needed to reimplement is_kernel_text
-    local_stext = (char *) kallsyms_lookup_name("_stext");
-    local_etext = (char *) kallsyms_lookup_name("_etext");
-    local_in_gate_area_no_mm = (in_gate_area_no_mm_t) kallsyms_lookup_name("in_gate_area_no_mm");
+    local_stext = (char *) local_kallsyms_lookup_name("_stext");
+    local_etext = (char *) local_kallsyms_lookup_name("_etext");
+    local_in_gate_area_no_mm = (in_gate_area_no_mm_t) local_kallsyms_lookup_name("in_gate_area_no_mm");
+
+    printk(INFO("dafsdfsa %p"), local_kallsyms_lookup_name("my_getdents64"));
 
     non_core_addrs = kzalloc(sizeof(int) * __NR_syscall_max, GFP_KERNEL);
 
@@ -83,7 +85,7 @@ int save_sys_call_table(void){
 
 int compare_sys_call_table(void){
     long i;
-    bool changed = false, brute_mem = false;
+    bool changed = false, backup_overwritten = false;
     char buff[255];
     n = 0;
 
@@ -99,14 +101,14 @@ int compare_sys_call_table(void){
             sprint_symbol(buff, sys_call_table_saved[i]);
             printk(WARNING("Looks like %s is not originated in the core kernel text section. (to zle, bardzo zle)"), buff);
             changed = true;
-            brute_mem = true;
+            backup_overwritten = true;
             non_core_addrs[n++] = i;
         }
     }
 
     printk(INFO("Finished looking for hooks."));
 
-    if (changed && brute_mem){
+    if (changed && backup_overwritten){
         return 2;
     }
     else if(changed){
@@ -121,9 +123,8 @@ int compare_sys_call_table(void){
 void restore_sys_call_table(int action) {
     int i;
     int k;
-    unsigned long tried_addr;
+    unsigned long addr;
     const char *name;
-    char buff[255];
 
     if(action == 1){
         // Recover from sys_call_table_saved
@@ -140,20 +141,19 @@ void restore_sys_call_table(int action) {
         printk(INFO("Syscall table recovered."));
     }
     else if(action == 2){
-        // Recover by brute force
+        // Recover by looking up symbol names
         disable_memory_protection();
-        printk(WARNING("Syscall hooks found. Trying to recover... (it may take a while)"));
-        for(tried_addr = (unsigned long) local_stext; tried_addr < (unsigned long) local_etext; tried_addr++){
-            sprint_symbol(buff, tried_addr);
+        printk(WARNING("Syscall hooks found. Backup entries point to hooks. Trying to recover by searching memory..."));
 
-            for (k = 0; k < n; ++k) {
-                name = get_name(non_core_addrs[k]);
-                if(unlikely(strstr(buff, "+0x0/") && strncmp(buff, name, strlen(name)) == 0)){
-                    sys_call_table[non_core_addrs[k]] = tried_addr;
-                    sys_call_table_saved[non_core_addrs[k]] = tried_addr;
-                }
-            }
+        for (k = 0; k < n; ++k) {
+            name = get_name(non_core_addrs[k]);
+            if (name == NULL) continue;
+            addr = local_kallsyms_lookup_name(name);
+            if (addr == 0) continue;
+            sys_call_table[non_core_addrs[k]] = addr;
+            sys_call_table_saved[non_core_addrs[k]] = addr;
         }
+
         enable_memory_protection();
         printk(INFO("Syscall table recovered."));
     }
