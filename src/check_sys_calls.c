@@ -1,9 +1,8 @@
 #include "check_sys_calls.h"
 
-typedef int (*in_gate_area_no_mm_t)(unsigned long addr);
+typedef int (*core_kernel_text_t)(unsigned long addr);
 
-static char *local_stext, *local_etext;
-static in_gate_area_no_mm_t local_in_gate_area_no_mm;
+static core_kernel_text_t core_kernel_text_;
 
 // The actual one
 static unsigned long *sys_call_table;
@@ -12,7 +11,7 @@ static unsigned long *sys_call_table_saved;
 static long *non_core_addrs;
 static int n;
 
-kallsyms_lookup_name_t local_kallsyms_lookup_name;
+kallsyms_lookup_name_t kallsyms_lookup_name_;
 
 static const char *get_name(long nr){
     switch (nr){
@@ -25,8 +24,6 @@ static const char *get_name(long nr){
     }
 }
 
-
-
 bool setup_sys_call_check(void) {
 //    Create kernel probe and set kp.symbol_name to the desired function
     struct kprobe kp = {
@@ -35,39 +32,26 @@ bool setup_sys_call_check(void) {
 //    Register kprobe, so it searches for the symbol given by kp.symbol_name
     register_kprobe(&kp);
 //    Retrieve address
-    local_kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
+    kallsyms_lookup_name_ = (kallsyms_lookup_name_t) kp.addr;
 //    Now we can unregister kprobe and return the pointer to sys_call_table
     unregister_kprobe(&kp);
 
-    if(local_kallsyms_lookup_name == NULL)
+    if(kallsyms_lookup_name_ == NULL)
         return false;
 
-    sys_call_table = (unsigned long *) local_kallsyms_lookup_name("sys_call_table");
+    sys_call_table = (unsigned long *) kallsyms_lookup_name_("sys_call_table");
     save_sys_call_table();
     if (sys_call_table_saved == NULL)
         return false;
 
-    // Setup pointers needed to reimplement is_kernel_text
-    local_stext = (char *) local_kallsyms_lookup_name("_stext");
-    local_etext = (char *) local_kallsyms_lookup_name("_etext");
-    local_in_gate_area_no_mm = (in_gate_area_no_mm_t) local_kallsyms_lookup_name("in_gate_area_no_mm");
 
-    printk(INFO("dafsdfsa %p"), local_kallsyms_lookup_name("my_getdents64"));
+    core_kernel_text_ = (core_kernel_text_t) kallsyms_lookup_name_("core_kernel_text");
 
     non_core_addrs = kzalloc(sizeof(int) * __NR_syscall_max, GFP_KERNEL);
 
     return !(sys_call_table == NULL ||
-           local_etext == NULL ||
-           local_stext == NULL ||
-           local_in_gate_area_no_mm == NULL ||
-           non_core_addrs == NULL);
-}
-
-static int local_is_kernel_text(unsigned long addr){
-    if ((addr >= (unsigned long)local_stext && addr <= (unsigned long)local_etext) ||
-        arch_is_kernel_text(addr))
-        return 1;
-    return local_in_gate_area_no_mm(addr);
+           non_core_addrs == NULL ||
+           core_kernel_text_ == NULL);
 }
 
 int save_sys_call_table(void){
@@ -89,7 +73,6 @@ int compare_sys_call_table(void){
     char buff[255];
     n = 0;
 
-
     printk(INFO("Looking for hooks in sys_call_table..."));
     for (i = 0; i < __NR_syscall_max; ++i) {
         if(IS_ENTRY_HOOKED(i)){
@@ -97,7 +80,7 @@ int compare_sys_call_table(void){
             printk(WARNING("Looks like %s has been hooked.\nThe address should be: 0x%p\nbut instead it is: 0x%p"),
                    buff, (void *) sys_call_table_saved[i], (void *) sys_call_table[i]);
             changed = true;
-        } else if(!local_is_kernel_text(sys_call_table[i])){
+        } else if(!core_kernel_text_(sys_call_table[i])){
             sprint_symbol(buff, sys_call_table_saved[i]);
             printk(WARNING("Looks like %s is not originated in the core kernel text section. (to zle, bardzo zle)"), buff);
             changed = true;
@@ -117,7 +100,6 @@ int compare_sys_call_table(void){
     else{
         return 0;
     }
-
 }
 
 void restore_sys_call_table(int action) {
@@ -148,7 +130,7 @@ void restore_sys_call_table(int action) {
         for (k = 0; k < n; ++k) {
             name = get_name(non_core_addrs[k]);
             if (name == NULL) continue;
-            addr = local_kallsyms_lookup_name(name);
+            addr = kallsyms_lookup_name_(name);
             if (addr == 0) continue;
             sys_call_table[non_core_addrs[k]] = addr;
             sys_call_table_saved[non_core_addrs[k]] = addr;

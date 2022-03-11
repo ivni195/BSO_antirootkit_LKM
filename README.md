@@ -90,46 +90,14 @@ This module creates a copy of `sys_call_table` on init. If our module was loaded
 we can compare addresses from the table currently present in memory with the saved ones. 
 If addresses don't match, there is a hook. Then we can warn the user and restore the original address.
 
-#### is_kernel_text
+#### core_kernel_text
 However, even if a rootkit was loaded first, we can still try to detect hooks.
 We iterate over every `sys_call_table` entry
-and call `is_kernel_text` which takes an address and tells us whether it belongs to the 
+and call `core_kernel_text` which takes an address and tells us whether it belongs to the 
 core kernel text memory section.
 Similarily to `kallsyms_lookup_name`, this function isn't available by traditional means,
-so we also have to do some address lookup kung-fu and reimplement our own `local_is_kernel_text`.
-This is the original implementation in `linux/kallsyms.h`
-```c
-static inline int is_kernel_text(unsigned long addr)
-{
-	if ((addr >= (unsigned long)_stext && addr <= (unsigned long)_etext) ||
-	    arch_is_kernel_text(addr))
-		return 1;
-	return in_gate_area_no_mm(addr);
-}
-```
-Symbols `_stext, _etext, in_gate_area_no_mm` are not globally accessible, but we can call 
-`kallsyms_lookup_name` to find and save them in locally created pointers.
-```c
-typedef int (*in_gate_area_no_mm_t)(unsigned long addr);
-
-char *local_stext, *local_etext;
-in_gate_area_no_mm_t local_in_gate_area_no_mm;
-
-local_stext = (char *) kallsyms_lookup_name("_stext");
-local_etext = (char *) kallsyms_lookup_name("_etext");
-local_in_gate_area_no_mm = (in_gate_area_no_mm_t) kallsyms_lookup_name("in_gate_area_no_mm");
-```
-
-Now we can reimplement the `is_kernel_text`
-```c
-static int local_is_kernel_text(unsigned long addr){
-    if ((addr >= (unsigned long)local_stext && addr <= (unsigned long)local_etext) ||
-        arch_is_kernel_text(addr))
-        return 1;
-    return local_in_gate_area_no_mm(addr);
-}
-```
-Whenever `local_is_kernel_text` returns 0, we warn the user and try to recover the address.
+so we also have to do some address lookup.
+Whenever `core_kernel_text` returns 0, we warn the user and try to recover the address.
 
 #### Recovering original syscalls
 We can, once again using `kallsyms_lookup_name`, search for original syscalls. For every `sys_call_table`

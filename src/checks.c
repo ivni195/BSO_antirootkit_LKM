@@ -11,7 +11,7 @@ bool setup_checks(void){
 #endif
 
 #ifdef CHECK_HIDDEN_MODULES
-    if(!(scan_procfs() && scan_sysfs())){
+    if(!setup_check_hidden()){
         printk(WARNING("Hidden module check setup failed."));
         return false;
     }
@@ -26,14 +26,30 @@ void cleanup_checks(void){
 #ifdef CHECK_SYS_CALL_HOOKS
     cleanup_sys_call_table();
 #endif
+
+#ifdef CHECK_HIDDEN_MODULES
+    cleanup_check_hidden();
+#endif
 }
 
-void check_sys_call_hooks(void){
+
+static void check_hidden_modules(void){
+    if(!(scan_sysfs() && scan_procfs())){
+        printk(WARNING("Scanning procfs/sysfs failed."));
+        return;
+    }
+
+    printk(INFO("Scanning procfs/sysfs succeded. Comparing..."));
+
+    compare_modules();
+}
+
+static void check_sys_call_hooks(void){
     int action = compare_sys_call_table();
     restore_sys_call_table(action);
 }
 
-void check_WP_bit(void){
+static void check_WP_bit(void){
     if (IS_WP_BIT_SET){
         printk(INFO("WP bit is set (as it should be)."));
     }
@@ -50,9 +66,7 @@ void checks_run(void){
 #ifdef CHECK_WP_BIT
     check_WP_bit();
 #endif
-
 #ifdef CHECK_HIDDEN_MODULES
-    compare_fs();
+    check_hidden_modules();
 #endif
 }
-

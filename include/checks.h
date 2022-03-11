@@ -8,9 +8,6 @@
 bool setup_checks(void);
 void cleanup_checks(void);
 
-void check_sys_call_hooks(void);
-void check_WP_bit(void);
-
 void checks_run(void);
 
 #endif //BSO_ANTIROOTKIT_LKM_CHECKS_H

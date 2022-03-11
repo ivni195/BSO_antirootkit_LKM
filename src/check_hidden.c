@@ -1,22 +1,31 @@
 #include "check_hidden.h"
 
-static char *procfs_modules[255];
-static char *sysfs_modules[255];
+#define MAX_MODULES 512
+
+static char **procfs_modules;
+static char **sysfs_modules;
 static int n_procfs = 0, n_sysfs = 0;
+
+bool setup_check_hidden(void){
+    procfs_modules = kzalloc(MAX_MODULES * sizeof(char *), GFP_KERNEL);
+    sysfs_modules = kzalloc(MAX_MODULES * sizeof(char *), GFP_KERNEL);
+
+    return (procfs_modules != NULL) && (sysfs_modules != NULL);
+}
 
 bool scan_procfs(void){
     struct module *mod;
     struct list_head *p;
 
-//    start from prev so we don't skip the antirootkit module
+//    start from prev, so we don't skip the antirootkit module
     list_for_each(p, __this_module.list.prev){
         mod = list_entry(p, struct module, list);
         procfs_modules[n_procfs++] = mod->name;
-        if(n_procfs == 255){
-            printk(WARNING("Procfs entry buffer is full. Some modules may be skipped."));
+        if(n_procfs == MAX_MODULES){
             return false;
         }
     }
+
     return true;
 }
 
@@ -27,19 +36,17 @@ bool scan_sysfs(void){
 
     list_for_each(p, &kset->list) {
         kobj = container_of(p, struct kobject, entry);
-//        DOPYTAC DLACZEGO TU JEST 2
         if(atomic_read(&kobj->kref.refcount.refs) >  2){
             sysfs_modules[n_sysfs++] = kobj->name;
         }
-        if(n_sysfs == 255) {
-            printk(WARNING("Sysfs entry buffer is full. Some modules may be skipped."));
+        if(n_sysfs == MAX_MODULES) {
             return false;
         }
     }
     return true;
 }
 
-void compare_fs(void){
+void compare_modules(void){
     int i, j;
     bool found;
     char *sysfs_name;
@@ -58,4 +65,9 @@ void compare_fs(void){
         }
     }
 
+}
+
+void cleanup_check_hidden(void){
+    kfree(sysfs_modules);
+    kfree(procfs_modules);
 }
