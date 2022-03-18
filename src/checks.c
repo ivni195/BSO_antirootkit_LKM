@@ -3,20 +3,29 @@
 bool setup_checks(void){
 #ifdef CHECK_SYS_CALL_HOOKS
     if(!setup_sys_call_check()){
-        printk(WARNING("Sys call hooks check setup failed."));
+        RK_WARNING("Sys call hooks check setup failed.");
         return false;
     }
 
-    printk(INFO("Sys call hooks check setup succesfully."));
+    RK_INFO("Sys call hooks check setup succesfully.");
 #endif
 
 #ifdef CHECK_HIDDEN_MODULES
     if(!setup_check_hidden()){
-        printk(WARNING("Hidden module check setup failed."));
+        RK_WARNING("Hidden module check setup failed.");
         return false;
     }
 
-    printk(INFO("Hidden module check setup succesfully."));
+    RK_INFO("Hidden module check setup succesfully.");
+#endif
+
+#ifdef CHECK_FTRACE_HOOKS
+    if(!setup_ftrace_hooks_check()){
+        RK_WARNING("Ftrace hook check setup failed.");
+        return false;
+    }
+
+    RK_INFO("Ftrace hook check setup succesfully.");
 #endif
 
     return true;
@@ -35,11 +44,11 @@ void cleanup_checks(void){
 
 static void check_hidden_modules(void){
     if(!(scan_sysfs() && scan_procfs())){
-        printk(WARNING("Scanning procfs/sysfs failed."));
+        RK_WARNING("Scanning procfs/sysfs failed.");
         return;
     }
 
-    printk(INFO("Scanning procfs/sysfs succeded. Comparing..."));
+    RK_INFO("Scanning procfs/sysfs succeded. Comparing...");
 
     compare_modules();
 }
@@ -51,12 +60,16 @@ static void check_sys_call_hooks(void){
 
 static void check_WP_bit(void){
     if (IS_WP_BIT_SET){
-        printk(INFO("WP bit is set (as it should be)."));
+        RK_INFO("WP bit is set (as it should be).");
     }
     else{
-        printk(WARNING("WP bit is cleared (it should be set).\nSetting WP bit back..."));
+        RK_WARNING("WP bit is cleared (it should be set).\nSetting WP bit back...");
         enable_memory_protection();
     }
+}
+
+static void check_ftrace_hooks(void){
+    scan_for_ftr_calls();
 }
 
 void checks_run(void){
@@ -68,5 +81,8 @@ void checks_run(void){
 #endif
 #ifdef CHECK_HIDDEN_MODULES
     check_hidden_modules();
+#endif
+#ifdef CHECK_FTRACE_HOOKS
+    check_ftrace_hooks();
 #endif
 }

@@ -61,7 +61,7 @@ void compare_modules(void){
             }
         }
         if (!found){
-            printk(WARNING("Looks like %s module is hidden (present in sysfs, not present in procfs)."), sysfs_name);
+            RK_WARNING("Looks like %s module is hidden (present in sysfs, not present in procfs).", sysfs_name);
         }
     }
 

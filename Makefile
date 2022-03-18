@@ -4,7 +4,8 @@ KDIR := /lib/modules/$(shell uname -r)/build
 obj-m := antirootkit.o
 
 # Sources
-antirootkit-objs := src/core.o src/check_sys_calls.o src/memory_prot.o src/utils.o src/checks.o src/check_hidden.o
+antirootkit-objs := src/core.o src/check_sys_calls.o src/memory_prot.o src/check_ftrace_hooks.o
+antirootkit-objs += src/utils.o src/checks.o src/check_hidden.o src/ftrace_utils.o
 
 ccflags-y := -I$(PWD)/include
 

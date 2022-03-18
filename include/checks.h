@@ -4,6 +4,7 @@
 #include "config.h"
 #include "check_sys_calls.h"
 #include "check_hidden.h"
+#include "check_ftrace_hooks.h"
 
 bool setup_checks(void);
 void cleanup_checks(void);
