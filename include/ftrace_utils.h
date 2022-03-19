@@ -43,10 +43,6 @@ struct ftrace_hook {
 };
 
 
-static const unsigned char nop[] = {
-        0x0f, 0x1f, 0x44, 0x00, 0x00
-};
-
 
 // Helper macro to create ftrace_hook.
 #define HOOK(_name, _function, _original)                    \

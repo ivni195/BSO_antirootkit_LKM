@@ -1,7 +1,3 @@
-//
-// Created by jakub on 18.03.2022.
-//
-
 #ifndef BSO_ANTIROOTKIT_LKM_CHECK_FTRACE_HOOKS_H
 #define BSO_ANTIROOTKIT_LKM_CHECK_FTRACE_HOOKS_H
 
