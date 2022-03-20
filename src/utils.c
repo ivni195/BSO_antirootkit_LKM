@@ -1,6 +1,7 @@
 #include "utils.h"
 
 kallsyms_lookup_name_t kallsyms_lookup_name_;
+core_kernel_text_t core_kernel_text_;
 
 bool find_kallsyms_lookup_name(void) {
 //    Create kernel probe and set kp.symbol_name to the desired function
@@ -16,6 +17,12 @@ bool find_kallsyms_lookup_name(void) {
     unregister_kprobe(&kp);
 
     return kallsyms_lookup_name_ != NULL;
+}
+
+bool setup_util_funcs(void){
+    core_kernel_text_ = (core_kernel_text_t) kallsyms_lookup_name_("core_kernel_text");
+
+    return core_kernel_text_ != NULL;
 }
 
 struct module *lookup_module_by_name(const char *mod_name){

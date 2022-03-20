@@ -1,8 +1,6 @@
 #include "check_sys_calls.h"
 
-typedef int (*core_kernel_text_t)(unsigned long addr);
 
-static core_kernel_text_t core_kernel_text_;
 
 // The actual one
 static unsigned long *sys_call_table;
@@ -12,9 +10,8 @@ static long *non_core_addrs;
 static int n;
 
 
-
-static const char *get_name(long nr){
-    switch (nr){
+static const char *get_name(long nr) {
+    switch (nr) {
         case __NR_kill:
             return "__x64_sys_kill";
         case __NR_getdents64:
@@ -31,19 +28,17 @@ bool setup_sys_call_check(void) {
         return false;
 
 
-    core_kernel_text_ = (core_kernel_text_t) kallsyms_lookup_name_("core_kernel_text");
-
     non_core_addrs = kzalloc(sizeof(int) * __NR_syscall_max, GFP_KERNEL);
 
     return !(sys_call_table == NULL ||
-           non_core_addrs == NULL ||
-           core_kernel_text_ == NULL);
+             non_core_addrs == NULL ||
+             core_kernel_text_ == NULL);
 }
 
-int save_sys_call_table(void){
+int save_sys_call_table(void) {
     int i;
     sys_call_table_saved = kzalloc(sizeof(unsigned long) * __NR_syscall_max, GFP_KERNEL);
-    if(sys_call_table_saved == NULL || sys_call_table == NULL)
+    if (sys_call_table_saved == NULL || sys_call_table == NULL)
         return 1;
 
     for (i = 0; i < __NR_syscall_max; i++) {
@@ -53,7 +48,7 @@ int save_sys_call_table(void){
     return 0;
 }
 
-int compare_sys_call_table(void){
+int compare_sys_call_table(void) {
     long i;
     bool changed = false, backup_overwritten = false;
     char buff[255];
@@ -61,12 +56,12 @@ int compare_sys_call_table(void){
 
     RK_INFO("Looking for hooks in sys_call_table...");
     for (i = 0; i < __NR_syscall_max; ++i) {
-        if(IS_ENTRY_HOOKED(i)){
+        if (IS_ENTRY_HOOKED(i)) {
             sprint_symbol(buff, sys_call_table_saved[i]);
             RK_WARNING("Looks like %s has been hooked.\nThe address should be: 0x%pK\nbut instead it is: 0x%pK",
-                   buff, (void *) sys_call_table_saved[i], (void *) sys_call_table[i]);
+                       buff, (void *) sys_call_table_saved[i], (void *) sys_call_table[i]);
             changed = true;
-        } else if(!core_kernel_text_(sys_call_table[i])){
+        } else if (!core_kernel_text_(sys_call_table[i])) {
             sprint_symbol(buff, sys_call_table_saved[i]);
             RK_WARNING("Looks like %s is not originated in the core kernel text section.", buff);
             changed = true;
@@ -77,13 +72,11 @@ int compare_sys_call_table(void){
 
     RK_INFO("Finished looking for hooks.");
 
-    if (changed && backup_overwritten){
+    if (changed && backup_overwritten) {
         return 2;
-    }
-    else if(changed){
+    } else if (changed) {
         return 1;
-    }
-    else{
+    } else {
         return 0;
     }
 }
@@ -94,7 +87,7 @@ void restore_sys_call_table(int action) {
     unsigned long addr;
     const char *name;
 
-    if(action == 1){
+    if (action == 1) {
         // Recover from sys_call_table_saved
         disable_memory_protection();
 
@@ -107,8 +100,7 @@ void restore_sys_call_table(int action) {
         enable_memory_protection();
 
         RK_INFO("Syscall table recovered.");
-    }
-    else if(action == 2){
+    } else if (action == 2) {
         // Recover by looking up symbol names
         disable_memory_protection();
         RK_WARNING("Syscall hooks found. Backup entries point to hooks. Trying to recover by searching memory...");
@@ -124,13 +116,13 @@ void restore_sys_call_table(int action) {
 
         enable_memory_protection();
         RK_INFO("Syscall table recovered.");
-    }
-    else{
+        n = 0;
+    } else {
         RK_INFO("No syscall hooks found.");
     }
 }
 
-void cleanup_sys_call_table(void){
+void cleanup_sys_call_table(void) {
     kfree(non_core_addrs);
     kfree(sys_call_table_saved);
 }

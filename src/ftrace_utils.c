@@ -1,23 +1,16 @@
-/*
- * Hooking mechanism stolen from https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
- */
-
 #include "ftrace_utils.h"
 
 lookup_rec_t lookup_rec_;
-ftrace_find_tramp_ops_curr_t ftrace_find_tramp_ops_curr_;
 ftrace_get_addr_curr_t ftrace_get_addr_curr_;
 unsigned long tramp_size;
 
 bool lookup_helper_funcs(void){
 //    Call this function only after find_kallsyms_lookup_name
     lookup_rec_ = (lookup_rec_t) kallsyms_lookup_name_("lookup_rec");
-    ftrace_find_tramp_ops_curr_ = (ftrace_find_tramp_ops_curr_t) kallsyms_lookup_name_("ftrace_find_tramp_ops_curr");
     ftrace_get_addr_curr_ = (ftrace_get_addr_curr_t) kallsyms_lookup_name_("ftrace_get_addr_curr");
     tramp_size = kallsyms_lookup_name_("ftrace_regs_caller_end") - kallsyms_lookup_name_("ftrace_regs_caller");
 
     return  lookup_rec_ != NULL &&
-//            ftrace_find_tramp_ops_curr_ != NULL &&
             ftrace_get_addr_curr_ != NULL;
 }
 
@@ -39,9 +32,10 @@ struct ftrace_ops *get_ftrace_ops(void *tr_func){
 }
 
 
-void inline *get_ftrace_callback(struct ftrace_ops *ops){
-    return ops->func;
-}
+/*
+ * Hooking mechanism stolen from https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
+ */
+
 
 /*
  * Insert addresses by resolving function name.
@@ -66,8 +60,7 @@ void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
 {
     struct ftrace_hook *hook = container_of(ops, struct ftrace_hook, ops);
 
-    /* Skip the function calls from the current module. */
-//    if (!within_module(parent_ip, THIS_MODULE))
+//    Go to the wrapper function
     regs->ip = (unsigned long) hook->function;
 }
 
@@ -80,8 +73,8 @@ int fh_install_hook(struct ftrace_hook *hook)
         return err;
 
     hook->ops.func = (ftrace_func_t) fh_ftrace_thunk;
-    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS |
-                      FTRACE_OPS_FL_IPMODIFY;
+    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS | // Fill struct pt_regs *regs
+                      FTRACE_OPS_FL_IPMODIFY; // We will modify the intruction pointer
 
     err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0);
     if (err) {

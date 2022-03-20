@@ -24,7 +24,6 @@ void scan_for_ftr_calls(void){
     struct module *mod;
     void *func;
     struct ftrace_ops *ops;
-    RK_INFO("%lu", NUM_PROTECTED_FUNCS);
     for(i = 0; i < NUM_PROTECTED_FUNCS; i++){
         name = protected_funcs[i];
         RK_INFO("Checking for ftrace hooks on %s.", name);

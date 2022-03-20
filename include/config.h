@@ -1,17 +1,19 @@
-/*
- * Config file that tells the module which checks should be performed.
- * Comment out checks that shouldn't be performed.
- */
-
 #ifndef BSO_ANTIROOTKIT_LKM_CONFIG
 #define BSO_ANTIROOTKIT_LKM_CONFIG
 
 #include "utils.h"
 
+/*
+ * Config file that tells the module which checks should be performed.
+ * Comment out checks that shouldn't be performed.
+ */
+
 #define CHECK_SYS_CALL_HOOKS
+#define CHECK_ENTRY_SYSCALL
 #define CHECK_WP_BIT
 #define CHECK_HIDDEN_MODULES
 #define CHECK_FTRACE_HOOKS
+
 
 // Add modules that you want to whitelist
 static const char whitelisted_mods[][MODULE_NAME_LEN] = {

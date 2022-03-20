@@ -1,7 +1,3 @@
-/*
- * Hooking mechanism stolen from https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
- */
-
 #ifndef BSO_ANTIROOTKIT_LKM_FTRACE_UTILS_H
 #define BSO_ANTIROOTKIT_LKM_FTRACE_UTILS_H
 
@@ -9,11 +5,12 @@
 #include "utils.h"
 
 // Functions needed to find the ftrace hook.
-typedef unsigned long (*ftrace_location_t)(unsigned long ip);
 typedef struct dyn_ftrace *(*lookup_rec_t)(unsigned long start, unsigned long end);
-typedef struct ftrace_func_entry *(*__ftrace_lookup_ip_t)(struct ftrace_hash *hash, unsigned long ip);
 typedef unsigned long (*ftrace_get_addr_curr_t)(struct dyn_ftrace *rec);
-typedef struct ftrace_ops *(*ftrace_find_tramp_ops_curr_t)(struct dyn_ftrace *rec);
+
+/*
+ * Hooking mechanism stolen from https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
+ */
 
 /**
  * struct ftrace_hook    describes the hooked function
@@ -55,7 +52,6 @@ struct ftrace_hook {
 bool lookup_helper_funcs(void);
 // tr_func - traced function
 struct ftrace_ops *get_ftrace_ops(void *tr_func);
-void inline *get_ftrace_callback(struct ftrace_ops *ops);
 
 void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
                              struct ftrace_ops *ops, struct pt_regs *regs);
