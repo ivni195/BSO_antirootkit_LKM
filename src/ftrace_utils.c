@@ -2,16 +2,17 @@
 
 lookup_rec_t lookup_rec_;
 ftrace_get_addr_curr_t ftrace_get_addr_curr_;
-unsigned long tramp_size;
+unsigned long caller_size;
 
 bool lookup_helper_funcs(void){
 //    Call this function only after find_kallsyms_lookup_name
     lookup_rec_ = (lookup_rec_t) kallsyms_lookup_name_("lookup_rec");
     ftrace_get_addr_curr_ = (ftrace_get_addr_curr_t) kallsyms_lookup_name_("ftrace_get_addr_curr");
-    tramp_size = kallsyms_lookup_name_("ftrace_regs_caller_end") - kallsyms_lookup_name_("ftrace_regs_caller");
+    caller_size = kallsyms_lookup_name_("ftrace_regs_caller_end") - kallsyms_lookup_name_("ftrace_regs_caller");
 
     return  lookup_rec_ != NULL &&
-            ftrace_get_addr_curr_ != NULL;
+            ftrace_get_addr_curr_ != NULL &&
+            caller_size != 0;
 }
 
 // Returns address to hook's ftrace_ops or NULL if NOP.
@@ -26,8 +27,16 @@ struct ftrace_ops *get_ftrace_ops(void *tr_func){
     }
 
     rec = lookup_rec_((unsigned long) tr_func, (unsigned long) tr_func);
+    if(rec == NULL){
+        return NULL;
+    }
+
     tramp = ftrace_get_addr_curr_(rec);
-    ops = (struct ftrace_ops **) (tramp_size + 1 + tramp);
+    if(tramp == 0){
+        return NULL;
+    }
+
+    ops = (struct ftrace_ops **) (caller_size + 1 + tramp);
     return *ops;
 }
 

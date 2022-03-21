@@ -105,7 +105,7 @@ entry that isn't originated in the core kernel text area, we take its name and c
 We retrieve the address and write it to `sys_call_table`.
 
 
-## Ftrace hooks
+## Checking for ftrace hooks
 ### How it works
 The aforementioned approach isn't able to detect all types of hooks. One may also hook 
 syscalls (or, in general, important functions) using ftrace. To understand how ftrace hooks
@@ -164,7 +164,7 @@ with its own `call` instruction.
 
 #### Note on avoiding recursion
 Notice that at some point we want to call the original function
-(otherwise we will most likely break something or even more likely a lot of things). 
+(otherwise we will very likely break something or even more likely a lot of things). 
 However, if we call the original function
 from within the wrapper, the ftrace hook will trigger again, we will go to the wrapper, which will
 call the original and so on... To avoid this, we can simply shift the original function pointer by
@@ -176,5 +176,136 @@ on https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
 Detection here is pretty straightforward. We define a set of funtions that we want to monitor, and 
 we check if 5 intial bytes of those functions are the `nop` intruction.
 If they are not, we replace them with `nop`, effectively removing a hook.
+
+#### Whitelisting other modules
 A problem arises when we use some legit software that traces functions for whatever reason.
-d
+Our module would detect those hooks and remove them, affecting the software's functionality. 
+To avoid this unwanted behavior, we can whitelist certain modules. If we detect a hook that
+leads to a whitelisted module's callback, we ignore the hook. The only problem is: How do we 
+find the callback address by only looking at the address of the hooked function?
+
+#### Recovering callback address
+To do it, we have to dive into the ftrace source code. First, let's take a look at `lookup_rec`
+```c
+static struct dyn_ftrace *lookup_rec(unsigned long start, unsigned long end)
+```
+It takes an address range and searches for hooked functions. 
+If it finds a hooked functions, it returns 
+the address of `struct dyn_ftrace rec`, which is the ftrace record descriptor 
+(some ftrace's internal structure). Once we have the `rec`, we can pass it to 
+```c
+unsigned long ftrace_get_addr_curr(struct dyn_ftrace *rec)
+```
+which returns the address of the trampoline that is being called. So we have the 
+trampoline address. Now we can take a look at how trampolines are created.
+```c
+static unsigned long
+create_trampoline(struct ftrace_ops *ops, unsigned int *caller_size)
+{
+    /*...*/
+    if (ops->flags & FTRACE_OPS_FL_SAVE_REGS) {
+        start_offset = (unsigned long)ftrace_regs_caller;
+        end_offset = (unsigned long)ftrace_regs_caller_end;
+        op_offset = (unsigned long)ftrace_regs_caller_op_ptr;
+        call_offset = (unsigned long)ftrace_regs_call;
+        jmp_offset = (unsigned long)ftrace_regs_caller_jmp;
+    } else {
+        start_offset = (unsigned long)ftrace_caller;
+        end_offset = (unsigned long)ftrace_caller_end;
+        op_offset = (unsigned long)ftrace_caller_op_ptr;
+        call_offset = (unsigned long)ftrace_call;
+        jmp_offset = 0;
+    }
+    /*
+     * The address of the ftrace_ops that is used for this trampoline
+     * is stored at the end of the trampoline. This will be used to
+     * load the third parameter for the callback. Basically, that
+     * location at the end of the trampoline takes the place of
+     * the global function_trace_op variable.
+     */
+    size = end_offset - start_offset;
+    /*...*/
+    ptr = (unsigned long *)(trampoline + size + RET_SIZE);
+    *ptr = (unsigned long)ops;
+    /*...*/
+}
+```
+To make ftrace hook any useful for a rootkit, it needs `FTRACE_OPS_FL_SAVE_REGS` to be set.
+Only then does it have access to the registers (`struct pt_regs` to be precise) 
+of the hooked function, so we can assume that the first branch of `if` is run. 
+Also, we see that the pointer to hook's `ops` is saved on the trampoline.
+
+We have the trampoline address, and we know where (within the trampoline) is the pointer to `ops`.
+Using those two things we can now recover the `ops` of the hook. Here's a piece of code that does
+exactly that
+```c
+lookup_rec_t lookup_rec_;
+ftrace_get_addr_curr_t ftrace_get_addr_curr_;
+unsigned long caller_size;
+
+bool lookup_helper_funcs(void){
+//    Call this function only after find_kallsyms_lookup_name
+    lookup_rec_ = (lookup_rec_t) kallsyms_lookup_name_("lookup_rec");
+    ftrace_get_addr_curr_ = (ftrace_get_addr_curr_t) kallsyms_lookup_name_("ftrace_get_addr_curr");
+    caller_size = kallsyms_lookup_name_("ftrace_regs_caller_end") - kallsyms_lookup_name_("ftrace_regs_caller");
+
+    return  lookup_rec_ != NULL &&
+            ftrace_get_addr_curr_ != NULL &&
+            caller_size != 0;
+}
+
+// Returns address to hook's ftrace_ops or NULL if NOP.
+struct ftrace_ops *get_ftrace_ops(void *tr_func){
+    struct dyn_ftrace *rec;
+    char nop[] = {0x0f, 0x1f, 0x44, 0x00, 0x00};
+    unsigned long tramp;
+    struct ftrace_ops **ops;
+
+    if(memcmp(tr_func, nop, MCOUNT_INSN_SIZE) == 0){
+        return NULL;
+    }
+
+    rec = lookup_rec_((unsigned long) tr_func, (unsigned long) tr_func);
+    if(rec == NULL){
+        return NULL;
+    }
+    
+    tramp = ftrace_get_addr_curr_(rec);
+    if(tramp == 0){
+        return NULL;
+    }
+    
+    ops = (struct ftrace_ops **) (caller_size + 1 + tramp);
+    return *ops;
+}
+```
+
+Once we have `ops` of the hook we can just look at `ops->func`, which is the callback that we want.
+Now, we can use 
+
+```c
+bool is_module_text(struct module *mod, unsigned long addr) {
+    unsigned long start;
+    unsigned long end;
+
+    start = (unsigned long) mod->core_layout.base;
+    end = (unsigned long) (mod->core_layout.base + mod->core_layout.size);
+
+    return (start <= addr && end >= addr);
+}
+```
+
+to find if the callback address belongs to a module. If it does and the module is not whitelisted, 
+we remove the hook.
+
+## Checking the WriteProtect bit of the cr0 register
+This check is pretty straightforward. It was already mentioned that in order to
+modify the `sys_call_table`, we need to clear `WP` bit of `cr0` register,
+which enables us to write to read-only memory in ring 0. We just make sure that the bit is set,
+and if it's not, we set it back. 
+
+Note. If this module detects hooks in `sys_call_table`, it will temporarily disable
+memory protection in order to restore overwritten entries, and then will enable 
+the protection back.
+
+## Checking the `entry_SYSCALL_64`
