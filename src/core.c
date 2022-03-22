@@ -45,7 +45,6 @@ static ssize_t foo_store(struct kobject *kobj, struct kobj_attribute *attr,
 //static  =__ATTR(foo, 0660, foo_show, foo_store);
 
 static int __init anti_rk_init(void) {
-    unsigned long msr;
     RK_INFO("Initializing...");
     if (!find_kallsyms_lookup_name()) {
         RK_WARNING("Failed looking up kallsyms_lookup_name.");
@@ -56,9 +55,6 @@ static int __init anti_rk_init(void) {
         RK_WARNING("Failed looking up necessary functions.");
         return 1;
     }
-
-    rdmsrl(MSR_LSTAR, msr);
-    RK_INFO("%pK %pK", msr, kallsyms_lookup_name_("entry_SYSCALL_64"));
 
     if (!setup_checks()) {
         RK_WARNING("Checks setup failed.");

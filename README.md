@@ -309,3 +309,12 @@ memory protection in order to restore overwritten entries, and then will enable
 the protection back.
 
 ## Checking the `entry_SYSCALL_64`
+We read from the Intel manual
+>SYSCALL invokes an OS system-call handler at privilege level 0. 
+> It does so by loading RIP from the IA32_LSTAR 
+> MSR (after saving the address of the instruction following SYSCALL into RCX). 
+> (The WRMSR instruction ensures 
+> that the IA32_LSTAR MSR always contain a canonical address.)
+
+In Linux, `IA32_LSTAR MSR` stores the address of `entry_SYSCALL_64`, which is the
+entry point for 64-bit syscalls.
