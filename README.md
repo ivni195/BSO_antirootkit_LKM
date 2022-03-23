@@ -318,3 +318,21 @@ We read from the Intel manual
 
 In Linux, `IA32_LSTAR MSR` stores the address of `entry_SYSCALL_64`, which is the
 entry point for 64-bit syscalls.
+A rootkit may overwrite the address using the `wrmsrl` macro and intercept all syscalls.
+We do the same thing as in the `sys_call_table` case. We read the `MSR LSTAR`, make sure that
+the address belongs to the core kernel text and store it. Then, we compare it
+with the address that's present in the register.
+
+## Checking the hidden modules
+After a rootkit inserts itself into kernel, it will probably try to hide itself.
+Many rootkits only remove themselves from the `proc` linked list. It can achieve it by doing
+```c
+list_del(&THIS_MODULE->list);
+```
+However, that's not everything. The information about inserted modules can be also found
+in kobjects. The rootkit can remove itself from the `kobj` list by running
+```c
+list_del(&THIS_MODULE->mkobj.kobj.entry);
+```
+We can check if a rootkit removed itself from both lists by iterating them and making sure
+their content is the same. The only problem is that when we
