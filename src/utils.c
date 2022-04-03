@@ -2,6 +2,8 @@
 
 kallsyms_lookup_name_t kallsyms_lookup_name_;
 core_kernel_text_t core_kernel_text_;
+module_address_t module_addr_;
+kern_addr_valid_t kern_addr_valid_;
 
 bool find_kallsyms_lookup_name(void) {
 //    Create kernel probe and set kp.symbol_name to the desired function
@@ -21,8 +23,12 @@ bool find_kallsyms_lookup_name(void) {
 
 bool setup_util_funcs(void){
     core_kernel_text_ = (core_kernel_text_t) kallsyms_lookup_name_("core_kernel_text");
+    module_addr_ = (module_address_t) kallsyms_lookup_name_("__module_address");
+    kern_addr_valid_ = (kern_addr_valid_t) kallsyms_lookup_name_("kern_addr_valid");
 
-    return core_kernel_text_ != NULL;
+    return  core_kernel_text_ != NULL &&
+            module_addr_ != NULL &&
+            kern_addr_valid_ != NULL;
 }
 
 struct module *lookup_module_by_name(const char *mod_name){
@@ -37,7 +43,7 @@ struct module *lookup_module_by_name(const char *mod_name){
     return NULL;
 }
 
-bool is_module_text(struct module *mod, unsigned long addr) {
+bool is_module_addr(struct module *mod, unsigned long addr) {
     unsigned long start;
     unsigned long end;
 
@@ -47,15 +53,5 @@ bool is_module_text(struct module *mod, unsigned long addr) {
     return (start <= addr && end >= addr);
 }
 
-struct module *lookup_module_by_addr(unsigned long addr){
-    struct list_head *p;
-    struct module *mod;
-    list_for_each(p, THIS_MODULE->list.prev){
-        mod = list_entry(p, struct module, list);
-        if (is_module_text(mod, addr)){
-            return mod;
-        }
-    }
-    return NULL;
-}
+
 

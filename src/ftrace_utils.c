@@ -1,48 +1,45 @@
 #include "ftrace_utils.h"
 
-lookup_rec_t lookup_rec_;
-ftrace_get_addr_curr_t ftrace_get_addr_curr_;
+/*
+ * Ftrace whitelisting stuff.
+ */
+
 unsigned long caller_size;
 
-bool lookup_helper_funcs(void){
+bool lookup_helpers(void){
 //    Call this function only after find_kallsyms_lookup_name
-    lookup_rec_ = (lookup_rec_t) kallsyms_lookup_name_("lookup_rec");
-    ftrace_get_addr_curr_ = (ftrace_get_addr_curr_t) kallsyms_lookup_name_("ftrace_get_addr_curr");
     caller_size = kallsyms_lookup_name_("ftrace_regs_caller_end") - kallsyms_lookup_name_("ftrace_regs_caller");
 
-    return  lookup_rec_ != NULL &&
-            ftrace_get_addr_curr_ != NULL &&
-            caller_size != 0;
+    return caller_size != 0;
 }
 
 // Returns address to hook's ftrace_ops or NULL if NOP.
 struct ftrace_ops *get_ftrace_ops(void *tr_func){
-    struct dyn_ftrace *rec;
-    char nop[] = {0x0f, 0x1f, 0x44, 0x00, 0x00};
-    unsigned long tramp;
+    unsigned char nop[] = {0x0f, 0x1f, 0x44, 0x00, 0x00};
+    unsigned long tramp, call_offset;
     struct ftrace_ops **ops;
 
-    if(memcmp(tr_func, nop, MCOUNT_INSN_SIZE) == 0){
+//    Make sure it isn't a nop and starts with e8.
+    if( memcmp(tr_func, nop, MCOUNT_INSN_SIZE) == 0 ||
+        *(unsigned char *)tr_func != 0xe8)
+    {
         return NULL;
     }
 
-    rec = lookup_rec_((unsigned long) tr_func, (unsigned long) tr_func);
-    if(rec == NULL){
-        return NULL;
-    }
+//    e8 <4 bytes long relative address>
+    call_offset = *(int *) (tr_func + 1);
+//    address is calculated relative to the next intruction's address
+    tramp = (unsigned long) (call_offset + tr_func + MCOUNT_INSN_SIZE);
 
-    tramp = ftrace_get_addr_curr_(rec);
-    if(tramp == 0){
-        return NULL;
-    }
-
+//    There's ftrace_ops saved on a certain offset.
     ops = (struct ftrace_ops **) (caller_size + 1 + tramp);
     return *ops;
 }
 
 
 /*
- * Hooking mechanism stolen from https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
+ * Hooking mechanism;
+ * Stolen from https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
  */
 
 

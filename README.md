@@ -243,7 +243,7 @@ lookup_rec_t lookup_rec_;
 ftrace_get_addr_curr_t ftrace_get_addr_curr_;
 unsigned long caller_size;
 
-bool lookup_helper_funcs(void){
+bool lookup_helpers(void){
 //    Call this function only after find_kallsyms_lookup_name
     lookup_rec_ = (lookup_rec_t) kallsyms_lookup_name_("lookup_rec");
     ftrace_get_addr_curr_ = (ftrace_get_addr_curr_t) kallsyms_lookup_name_("ftrace_get_addr_curr");
@@ -284,7 +284,7 @@ Once we have `ops` of the hook we can just look at `ops->func`, which is the cal
 Now, we can use 
 
 ```c
-bool is_module_text(struct module *mod, unsigned long addr) {
+bool is_module_addr(struct module *mod, unsigned long addr) {
     unsigned long start;
     unsigned long end;
 

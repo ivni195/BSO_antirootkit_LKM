@@ -15,7 +15,7 @@ static bool is_mod_whitelisted(const char *name){
 }
 
 bool setup_ftrace_hooks_check(void){
-    return lookup_helper_funcs();
+    return lookup_helpers();
 }
 
 void scan_for_ftr_calls(void){
@@ -27,7 +27,7 @@ void scan_for_ftr_calls(void){
     for(i = 0; i < NUM_PROTECTED_FUNCS; i++){
         name = protected_funcs[i];
         RK_INFO("Checking for ftrace hooks on %s.", name);
-        func = kallsyms_lookup_name_(name);
+        func = (void *) kallsyms_lookup_name_(name);
         if(func == NULL){
             RK_WARNING("Failed looking up %s", name);
             continue;
@@ -44,13 +44,13 @@ void scan_for_ftr_calls(void){
             continue;
         }
 
-        mod = lookup_module_by_addr((unsigned long) ops->func);
+        mod = module_addr_((unsigned long) ops->func);
         if(mod == NULL){
             RK_WARNING("Failed looking up owner module.");
         }
 //        If we can't find module, we treat the module as hidden and remove the hook anyway.
         else if(is_mod_whitelisted(mod->name)){
-            RK_WARNING("Function %s is hooked but the hooking module is whitelisted.", name);
+            RK_WARNING("Function %s is hooked but the hooking module (%s) is whitelisted.", name, mod->name);
             continue;
         }
 

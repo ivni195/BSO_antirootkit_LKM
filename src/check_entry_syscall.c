@@ -37,7 +37,7 @@ void restore_entry_syscall(int action){
         RK_WARNING("Syscall entry location is not what it should be.");
 
         rdmsrl(MSR_LSTAR, curr_entry_syscall);
-        mod = lookup_module_by_addr(curr_entry_syscall);
+        mod = module_addr_(curr_entry_syscall);
 
         if(mod != NULL){
             RK_WARNING("Looks like the entry address belongs to module %s.", mod->name);

@@ -10,29 +10,34 @@
 #define RK_WARNING(mess, ...) printk(KERN_WARNING "antirootkit: " mess "\n", ##__VA_ARGS__)
 
 
-
 #define NUM_PROTECTED_FUNCS (sizeof(protected_funcs) / KSYM_NAME_LEN)
 #define NUM_WHITELISTED (sizeof(protected_funcs) / MODULE_NAME_LEN)
 
-typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
-
 typedef asmlinkage unsigned long (*pt_regs_t)(const struct pt_regs *regs);
 
-typedef int (*core_kernel_text_t)(unsigned long addr);
+/*
+ * The functions below are already declared in header files.
+ * I append an underscore to avoid name conflicts.
+ */
 
+typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
 extern kallsyms_lookup_name_t kallsyms_lookup_name_;
+
+typedef int (*core_kernel_text_t)(unsigned long addr);
 extern core_kernel_text_t core_kernel_text_;
+
+typedef struct module *(*module_address_t)(unsigned long addr);
+extern module_address_t module_addr_;
+
+typedef int (*kern_addr_valid_t)(unsigned long addr);
+extern kern_addr_valid_t kern_addr_valid_;
 
 bool setup_util_funcs(void);
 
 bool find_kallsyms_lookup_name(void);
 
-bool is_module_text(struct module *mod, unsigned long addr);
+bool is_module_addr(struct module *mod, unsigned long addr);
 
 struct module *lookup_module_by_name(const char *mod_name);
-
-struct module *lookup_module_by_addr(unsigned long addr);
-
-size_t string_array_size(char **tab, size_t string_size);
 
 #endif //BSO_ANTIROOTKIT_LKM_UTILS_H

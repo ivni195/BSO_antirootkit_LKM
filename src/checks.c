@@ -36,7 +36,8 @@ void cleanup_checks(void) {
 
 static void check_hidden_modules(void) {
     RK_WARNING("Running HIDDEN MODULES CHECK...");
-    compare_modules();
+    compare_proc_sys();
+    signature_scan_memory();
 }
 
 static void check_sys_call_hooks(void) {

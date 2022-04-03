@@ -4,10 +4,6 @@
 #include <linux/ftrace.h>
 #include "utils.h"
 
-// Functions needed to find the ftrace hook.
-typedef struct dyn_ftrace *(*lookup_rec_t)(unsigned long start, unsigned long end);
-typedef unsigned long (*ftrace_get_addr_curr_t)(struct dyn_ftrace *rec);
-
 /*
  * Hooking mechanism stolen from https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
  */
@@ -49,7 +45,7 @@ struct ftrace_hook {
             .original = (_original),                         \
         }
 
-bool lookup_helper_funcs(void);
+bool lookup_helpers(void);
 // tr_func - traced function
 struct ftrace_ops *get_ftrace_ops(void *tr_func);
 

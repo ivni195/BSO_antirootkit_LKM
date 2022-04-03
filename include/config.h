@@ -8,9 +8,9 @@
  * Comment out checks that shouldn't be performed.
  */
 
-#define CHECK_SYS_CALL_HOOKS
-#define CHECK_ENTRY_SYSCALL
-#define CHECK_WP_BIT
+//#define CHECK_SYS_CALL_HOOKS
+//#define CHECK_ENTRY_SYSCALL
+//#define CHECK_WP_BIT
 #define CHECK_HIDDEN_MODULES
 #define CHECK_FTRACE_HOOKS
 
