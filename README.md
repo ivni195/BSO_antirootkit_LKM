@@ -282,21 +282,11 @@ struct ftrace_ops *get_ftrace_ops(void *tr_func){
 
 Once we have `ops` of the hook we can just look at `ops->func`, which is the callback that we want.
 Now, we can use 
-
 ```c
-bool is_module_addr(struct module *mod, unsigned long addr) {
-    unsigned long start;
-    unsigned long end;
-
-    start = (unsigned long) mod->core_layout.base;
-    end = (unsigned long) (mod->core_layout.base + mod->core_layout.size);
-
-    return (start <= addr && end >= addr);
-}
+struct module *__module_address(unsigned long addr)
 ```
-
-to find if the callback address belongs to a module. If it does and the module is not whitelisted, 
-we remove the hook.
+to find if the callback address belongs to a module. If it does and the module is not whitelisted,
+(or we can't find the module, which means it's hidden itself) we remove the hook.
 
 ## Checking the WriteProtect bit of the cr0 register
 This check is pretty straightforward. It was already mentioned that in order to
@@ -335,4 +325,107 @@ in kobjects. The rootkit can remove itself from the `kobj` list by running
 list_del(&THIS_MODULE->mkobj.kobj.entry);
 ```
 We can check if a rootkit removed itself from both lists by iterating them and making sure
-their content is the same. The only problem is that when we
+their content is the same. 
+### Memory scanning
+The above approach is most likely sufficient to find simple rootkits, but is very
+easy to bypass. A rootkit utilizing DKOM can in fact remove itself from all kernel 
+structures, making it impossible to uncloak the rootkit using only the kernel's API.
+
+To solve this problem, we can scan the memory and search for data structures that look
+like `struct module`. Then we check if the kernel is aware of this structure (for example
+check the procfs module linked list).
+If it isn't, we found a hidden module.
+
+#### Finding the signature
+I spend a lot of time trying to figure our the right signature and 
+the answer came out to be very simple (I'm sure there's more a sofisticated
+solution, but mine works just fine). 
+This is a fragment of `struct module` definition
+```c
+
+struct module {
+    /*...*/
+    /* Sysfs stuff. */
+    struct module_kobject mkobj;
+    struct module_attribute *modinfo_attrs;
+    const char *version;
+    const char *srcversion;
+    struct kobject *holders_dir;
+    /*...*/
+}
+```
+It contains `struct module_kobject`. Let's look at this as well
+```c
+struct module_kobject {
+	struct kobject kobj;
+	struct module *mod; /* <--- this is what we're looking for */
+	struct kobject *drivers_dir;
+	struct module_param_attrs *mp;
+	struct completion *kobj_completion;
+} __randomize_layout;
+```
+Turns out `struct module` contains a pointer to itself. Moreover, after some testing
+I found that modifying this pointer crashes the module. Maybe I missed something and
+there is a way to change it, but this looks rosy anyway. 
+
+Now we want to go through module memory area. Let's find the boundaries first.
+They are not globally accessible. I used the `__module_address` function to extract them.
+
+```c
+struct module *__module_address(unsigned long addr)
+{
+	struct module *mod;
+
+	if (addr < module_addr_min || addr > module_addr_max)
+		return NULL;
+
+	module_assert_mutex_or_preempt();
+
+	mod = mod_find(addr);
+	if (mod) {
+		BUG_ON(!within_module(addr, mod));
+		if (mod->state == MODULE_STATE_UNFORMED)
+			mod = NULL;
+	}
+	return mod;
+}
+```
+Both boundaries are accessed here. 
+We can print a first couple of bytes of this function and disassemble them.
+```
+0:  0f 1f 44 00 00          nop    DWORD PTR [rax+rax*1+0x0]
+5:  55                      push   rbp
+6:  48 39 3d 0b 3b ca 01    cmp    QWORD PTR [rip+0x1ca3b0b],rdi        # 0x1ca3b18
+d:  48 89 e5                mov    rbp,rsp
+10: 0f 87 a9 00 00 00       ja     0xbf
+16: 48 39 3d 03 3b ca 01    cmp    QWORD PTR [rip+0x1ca3b03],rdi        # 0x1ca3b20
+1d: 73 22                   jae    0x41
+1f: e9 9b 00 00 00          jmp    0xbf
+```
+We see the ftrace nop once again and, more importantly, those two addresses: 
+`0x1ca3b18 0x1ca3b20`. Using some ugly type casting, we recover the values
+```c
+module_addr_min = *(unsigned long *) ((void *) module_addr_ + 0x1ca3b18);
+module_addr_max = *(unsigned long *) ((void *) module_addr_ + 0x1ca3b20);
+```
+Now we can just scan the memory from `module_addr_min` to `module_addr_max`, 
+test for the signature and reveal some sneaky rootkits.
+```c
+while ((unsigned long) ptr < module_addr_max) {
+    ptr_mod = (struct module *) ptr;
+
+//    Make sure we're looking at valid addresses. Check the first and the last address of the potential module struct.
+    if (kern_addr_valid_((unsigned long) ptr_mod) &&
+        kern_addr_valid_((unsigned long) ptr_mod + sizeof(struct module))) {
+//        Check the struct module signature. This looks way too simple to be good, but it works.
+        if (ptr_mod == ptr_mod->mkobj.mod) {
+//            We found a valid module - now let's check if it's in the module list
+            if(lookup_module_by_name(ptr_mod->name) == NULL){
+                RK_WARNING("Looks like the \"%s\" module is hidden (found by a memory scan).", ptr_mod->name);
+            }
+        }
+    }
+    ptr += 0x10;
+}
+```
+

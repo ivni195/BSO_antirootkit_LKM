@@ -43,6 +43,8 @@ void signature_scan_memory(void) {
     unsigned long module_addr_min;
     unsigned long module_addr_max;
 
+    int forced;
+
     void *ptr;
     struct module *ptr_mod;
 //    You can find these offsets (they are relative to RIP) after disassembling the __module_address function.
@@ -58,8 +60,7 @@ void signature_scan_memory(void) {
         if (kern_addr_valid_((unsigned long) ptr_mod) &&
             kern_addr_valid_((unsigned long) ptr_mod + sizeof(struct module))) {
 //            Check the struct module signature.
-            if ((ptr_mod->state == MODULE_STATE_LIVE || ptr_mod->state == MODULE_STATE_COMING) &&
-                ptr_mod == ptr_mod->mkobj.mod) {
+            if (ptr_mod == ptr_mod->mkobj.mod) {
 //                We found a valid module - now let's check if it's in the module list
                 if(lookup_module_by_name(ptr_mod->name) == NULL){
                     RK_WARNING("Looks like the \"%s\" module is hidden (found by a memory scan).", ptr_mod->name);

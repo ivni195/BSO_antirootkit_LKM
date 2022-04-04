@@ -31,21 +31,21 @@ static int __init anti_rk_init(void) {
     RK_INFO("Initializing...");
     if (!find_kallsyms_lookup_name()) {
         RK_WARNING("Failed looking up kallsyms_lookup_name.");
-        return 1;
+        return -EINVAL;
     }
 
     if(!setup_util_funcs()){
         RK_WARNING("Failed looking up necessary functions.");
-        return 1;
+        return -EINVAL;
     }
 
     if (!setup_checks()) {
         RK_WARNING("Checks setup failed.");
-        return 1;
+        return -EINVAL;
     }
 
     user_if_kobj = kobject_create_and_add("antirk_sysfs_interface", kernel_kobj);
-    if(!sysfs_create_file(user_if_kobj, &user_if_kattr.attr))
+    if(sysfs_create_file(user_if_kobj, &user_if_kattr.attr) != 0)
         RK_WARNING("Cannot create sysfs interface file.");
 
     fh_install_hook(&hooks[0]);

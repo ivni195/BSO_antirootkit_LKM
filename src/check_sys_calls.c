@@ -1,7 +1,6 @@
 #include "check_sys_calls.h"
 
 
-
 // The actual one
 static unsigned long *sys_call_table;
 // The backup one
