@@ -13,4 +13,4 @@ void cleanup_checks(void);
 
 void checks_run(void);
 
-#endif//BSO_ANTIROOTKIT_LKM_CHECKS_H
+#endif //BSO_ANTIROOTKIT_LKM_CHECKS_H

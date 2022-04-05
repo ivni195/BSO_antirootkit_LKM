@@ -17,5 +17,4 @@ int compare_entry_syscall(void);
 // Restore IA32_LSTAR MSR
 void restore_entry_syscall(int action);
 
-
-#endif//BSO_ANTIROOTKIT_LKM_ENTRY_SYSCALL_CHECK_H
+#endif //BSO_ANTIROOTKIT_LKM_ENTRY_SYSCALL_CHECK_H

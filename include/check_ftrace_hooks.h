@@ -10,4 +10,4 @@ void scan_for_ftr_calls(void);
 
 // no cleanup function needed
 
-#endif//BSO_ANTIROOTKIT_LKM_CHECK_FTRACE_HOOKS_H
+#endif //BSO_ANTIROOTKIT_LKM_CHECK_FTRACE_HOOKS_H

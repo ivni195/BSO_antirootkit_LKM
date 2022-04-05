@@ -6,7 +6,6 @@
 
 // Stuff for is_kernel_text
 
-
 #define IS_ENTRY_HOOKED(i) sys_call_table_saved[(i)] != sys_call_table[(i)]
 
 /*
@@ -28,7 +27,6 @@ int save_sys_call_table(void);
 */
 int compare_sys_call_table(void);
 
-
 /*
  * If we detected a hook, besides warning the user,
  * we can also restore the sys_call_table.
@@ -44,4 +42,4 @@ void restore_sys_call_table(int action);
  */
 void cleanup_sys_call_table(void);
 
-#endif//BSO_ANTIROOTKIT_LKM_CHECK_SYS_CALLS_H
+#endif //BSO_ANTIROOTKIT_LKM_CHECK_SYS_CALLS_H

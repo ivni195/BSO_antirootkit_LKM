@@ -6,10 +6,12 @@
 #include <linux/slab.h>
 
 // For dmesg logging
-#define rk_info(mess, ...) printk(KERN_INFO "antirootkit: " mess "\n", ##__VA_ARGS__)
-#define rk_warning(mess, ...) printk(KERN_WARNING "antirootkit: " mess "\n", ##__VA_ARGS__)
-#define rk_debug(mess, ...) printk(KERN_DEBUG "antirootkit: " mess "\n", ##__VA_ARGS__)
-
+#define rk_info(mess, ...)                                                     \
+	printk(KERN_INFO "antirootkit: " mess "\n", ##__VA_ARGS__)
+#define rk_warning(mess, ...)                                                  \
+	printk(KERN_WARNING "antirootkit: " mess "\n", ##__VA_ARGS__)
+#define rk_debug(mess, ...)                                                    \
+	printk(KERN_DEBUG "antirootkit: " mess "\n", ##__VA_ARGS__)
 
 #define NUM_PROTECTED_FUNCS (sizeof(protected_funcs) / KSYM_NAME_LEN)
 #define NUM_WHITELISTED (sizeof(protected_funcs) / MODULE_NAME_LEN)
@@ -41,4 +43,4 @@ bool is_module_addr(struct module *mod, unsigned long addr);
 
 struct module *lookup_module_by_name(const char *mod_name);
 
-#endif//BSO_ANTIROOTKIT_LKM_UTILS_H
+#endif //BSO_ANTIROOTKIT_LKM_UTILS_H

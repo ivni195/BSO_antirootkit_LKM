@@ -3,8 +3,8 @@
 
 #include "check_wp_bit.h"
 #include "utils.h"
-#include <linux/kernel.h>// Types, macros, functions for the kernel
-#include <linux/slab.h>  // Allocate/free kernel memory + read_cr0()
+#include <linux/kernel.h> // Types, macros, functions for the kernel
+#include <linux/slab.h> // Allocate/free kernel memory + read_cr0()
 
 /*
  * Workaround for overwriting cr0 register (instead of using write_cr0()).
@@ -21,4 +21,4 @@ void enable_memory_protection(void);
  */
 void disable_memory_protection(void);
 
-#endif//BSO_ANTROOTKIT_LKM_MEMORY_PROT_H
+#endif //BSO_ANTROOTKIT_LKM_MEMORY_PROT_H

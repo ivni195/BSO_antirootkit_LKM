@@ -4,4 +4,4 @@
 #define WP_BIT 0x10000
 #define IS_WP_BIT_SET (read_cr0() & WP_BIT) == WP_BIT
 
-#endif//BSO_ANTIROOTKIT_LKM_CHECK_WP_BIT_H
+#endif //BSO_ANTIROOTKIT_LKM_CHECK_WP_BIT_H
