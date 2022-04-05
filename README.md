@@ -53,20 +53,17 @@ we need to use the following workaround that uses kernel probes
 ```c
 typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
 
-void setup_sys_call_check(void) {
-//    Create kernel probe and set kp.symbol_name to the desired function
-    struct kprobe kp = {
-            .symbol_name = "kallsyms_lookup_name"
-    };
-//    Create a function pointer that will later store the desired address
-    kallsyms_lookup_name_t kallsyms_lookup_name;
-//    Register kprobe, so it searches for the symbol given by kp.symbol_name
-    register_kprobe(&kp);
-//    Retrieve address
-    kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
-//    Now we can unregister kprobe and return the pointer to sys_call_table
-    unregister_kprobe(&kp);
-    sys_call_table = (unsigned long *) kallsyms_lookup_name("sys_call_table");
+void setup_sys_call_check(void) 
+{
+        struct kprobe kp = {
+                .symbol_name = "kallsyms_lookup_name"
+        };
+        kallsyms_lookup_name_t kallsyms_lookup_name;
+    //    Register kprobe, so it searches for the symbol given by kp.symbol_name
+        register_kprobe(&kp);
+        kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
+        unregister_kprobe(&kp);
+        sys_call_table = (unsigned long *) kallsyms_lookup_name("sys_call_table");
 }
 ```
 
@@ -82,11 +79,12 @@ permission error. The kernel doesn't allow you to remove write protection. Of co
 writing to `cr0` with
 
 ```c
-inline void force_write_cr0(unsigned long val) {
-    asm volatile(
-    "mov %0, %%cr0"
-    : "+r"(val)
-    );
+inline void force_write_cr0(unsigned long val) 
+{
+        asm volatile(
+        "mov %0, %%cr0"
+        : "+r"(val)
+        );
 }
 ```
 
@@ -95,8 +93,9 @@ so that we can disable WP with
 ```c
 #define WP_BIT 0x10000
 
-void disable_memory_protection(void) {
-    force_write_cr0(read_cr0() & (~WP_BIT));
+void disable_memory_protection(void) 
+{
+        force_write_cr0(read_cr0() & (~WP_BIT));
 }
 ```
 
@@ -135,16 +134,17 @@ important functions) using ftrace. To understand how ftrace hooks functions, we 
 a function. We can use this fragment of code
 
 ```c
-static void get_func_assembly(char *ptr){
-    char bytes[201];
-    int i;
-
-    memzero_explicit(bytes, 201);
-
-    for(i = 0; i < 100; i++){
-        sprintf(bytes, "%s%02hhX", bytes, ptr[i]);
-    }
-    printk("%s\n", bytes);
+static void get_func_assembly(char *ptr)
+{
+        char bytes[201];
+        int i;
+    
+        memzero_explicit(bytes, 201);
+    
+        for(i = 0; i < 100; i++){
+            sprintf(bytes, "%s%02hhX", bytes, ptr[i]);
+        }
+        printk("%s\n", bytes);
 }
 ```
 
@@ -201,7 +201,7 @@ on https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
 ### Detecting ftrace hooks
 
 Detection here is pretty straightforward. We define a set of funtions that we want to monitor, and we check if 5 intial
-bytes of those functions are the `nop` intruction. If they are not, we replace them with `nop`, effectively removing a
+bytes of those functions are the `nop` instruction. If they are not, we replace them with `nop`, effectively removing a
 hook.
 
 #### Whitelisting other modules
@@ -213,53 +213,39 @@ is: How do we find the callback address by only looking at the address of the ho
 
 #### Recovering callback address
 
-To do it, we have to dive into the ftrace source code. First, let's take a look at `lookup_rec`
-
-```c
-static struct dyn_ftrace *lookup_rec(unsigned long start, unsigned long end)
-```
-
-It takes an address range and searches for hooked functions. If it finds a hooked functions, it returns the address
-of `struct dyn_ftrace rec`, which is the ftrace record descriptor
-(some ftrace's internal structure). Once we have the `rec`, we can pass it to
-
-```c
-unsigned long ftrace_get_addr_curr(struct dyn_ftrace *rec)
-```
-
-which returns the address of the trampoline that is being called. So we have the trampoline address. Now we can take a
-look at how trampolines are created.
+Ftrace doesn't jump directly into our callback. It jumps to a ftrace trampoline first.
+So let's take a look at how trampolines are created.
 
 ```c
 static unsigned long
 create_trampoline(struct ftrace_ops *ops, unsigned int *caller_size)
 {
-    /*...*/
-    if (ops->flags & FTRACE_OPS_FL_SAVE_REGS) {
-        start_offset = (unsigned long)ftrace_regs_caller;
-        end_offset = (unsigned long)ftrace_regs_caller_end;
-        op_offset = (unsigned long)ftrace_regs_caller_op_ptr;
-        call_offset = (unsigned long)ftrace_regs_call;
-        jmp_offset = (unsigned long)ftrace_regs_caller_jmp;
-    } else {
-        start_offset = (unsigned long)ftrace_caller;
-        end_offset = (unsigned long)ftrace_caller_end;
-        op_offset = (unsigned long)ftrace_caller_op_ptr;
-        call_offset = (unsigned long)ftrace_call;
-        jmp_offset = 0;
-    }
-    /*
-     * The address of the ftrace_ops that is used for this trampoline
-     * is stored at the end of the trampoline. This will be used to
-     * load the third parameter for the callback. Basically, that
-     * location at the end of the trampoline takes the place of
-     * the global function_trace_op variable.
-     */
-    size = end_offset - start_offset;
-    /*...*/
-    ptr = (unsigned long *)(trampoline + size + RET_SIZE);
-    *ptr = (unsigned long)ops;
-    /*...*/
+        /*...*/
+        if (ops->flags & FTRACE_OPS_FL_SAVE_REGS) {
+                start_offset = (unsigned long)ftrace_regs_caller;
+                end_offset = (unsigned long)ftrace_regs_caller_end;
+                op_offset = (unsigned long)ftrace_regs_caller_op_ptr;
+                call_offset = (unsigned long)ftrace_regs_call;
+                jmp_offset = (unsigned long)ftrace_regs_caller_jmp;
+        } else {
+                start_offset = (unsigned long)ftrace_caller;
+                end_offset = (unsigned long)ftrace_caller_end;
+                op_offset = (unsigned long)ftrace_caller_op_ptr;
+                call_offset = (unsigned long)ftrace_call;
+                jmp_offset = 0;
+        }
+        /*
+         * The address of the ftrace_ops that is used for this trampoline
+         * is stored at the end of the trampoline. This will be used to
+         * load the third parameter for the callback. Basically, that
+         * location at the end of the trampoline takes the place of
+         * the global function_trace_op variable.
+         */
+        size = end_offset - start_offset;
+        /*...*/
+        ptr = (unsigned long *)(trampoline + size + RET_SIZE);
+        *ptr = (unsigned long)ops;
+        /*...*/
 }
 ```
 
@@ -268,48 +254,37 @@ access to the registers (`struct pt_regs` to be precise)
 of the hooked function, so we can assume that the first branch of `if` is run. Also, we see that the pointer to
 hook's `ops` is saved on the trampoline.
 
+OK, but we need the trampoline address. We can calculate it easily knowing that
+the call instruction jumps to an address relative to the next instruction's address.
+The next instruction is at `fn_ptr + MCOUNT_INSN_SIZE`. The absolute call address
+offset is `*(int *) (fn_ptr + 1)` (note that we add one to jump over E8 call opcode
+to the actual relative address). So we find the trampoline address to be
+`fn_ptr + MCOUNT_INSN_SIZE + *(int *) (fn_ptr + 1)`
+
 We have the trampoline address, and we know where (within the trampoline) is the pointer to `ops`. Using those two
 things we can now recover the `ops` of the hook. Here's a piece of code that does exactly that
 
 ```c
-lookup_rec_t lookup_rec_;
-ftrace_get_addr_curr_t ftrace_get_addr_curr_;
-unsigned long caller_size;
+struct ftrace_ops *get_ftrace_ops(void *tr_func)
+{
+        unsigned char nop[] = {0x0f, 0x1f, 0x44, 0x00, 0x00};
+        unsigned long tramp, call_offset;
+        struct ftrace_ops **ops;
 
-bool lookup_helpers(void){
-//    Call this function only after find_kallsyms_lookup_name
-    lookup_rec_ = (lookup_rec_t) kallsyms_lookup_name_("lookup_rec");
-    ftrace_get_addr_curr_ = (ftrace_get_addr_curr_t) kallsyms_lookup_name_("ftrace_get_addr_curr");
-    caller_size = kallsyms_lookup_name_("ftrace_regs_caller_end") - kallsyms_lookup_name_("ftrace_regs_caller");
+        //    Make sure it isn't a nop and starts with e8.
+        if (memcmp(tr_func, nop, MCOUNT_INSN_SIZE) == 0 ||
+            *(unsigned char *) tr_func != 0xe8) {
+                return NULL;
+        }
 
-    return  lookup_rec_ != NULL &&
-            ftrace_get_addr_curr_ != NULL &&
-            caller_size != 0;
-}
+        //    e8 <4 bytes long relative address>
+        call_offset = *(int *) (tr_func + 1);
+        //    address is calculated relative to the next instruction's address
+        tramp = (unsigned long) (call_offset + tr_func + MCOUNT_INSN_SIZE);
 
-// Returns address to hook's ftrace_ops or NULL if NOP.
-struct ftrace_ops *get_ftrace_ops(void *tr_func){
-    struct dyn_ftrace *rec;
-    char nop[] = {0x0f, 0x1f, 0x44, 0x00, 0x00};
-    unsigned long tramp;
-    struct ftrace_ops **ops;
-
-    if(memcmp(tr_func, nop, MCOUNT_INSN_SIZE) == 0){
-        return NULL;
-    }
-
-    rec = lookup_rec_((unsigned long) tr_func, (unsigned long) tr_func);
-    if(rec == NULL){
-        return NULL;
-    }
-    
-    tramp = ftrace_get_addr_curr_(rec);
-    if(tramp == 0){
-        return NULL;
-    }
-    
-    ops = (struct ftrace_ops **) (caller_size + 1 + tramp);
-    return *ops;
+        //    There's ftrace_ops saved on a certain offset.
+        ops = (struct ftrace_ops **) (caller_size + 1 + tramp);
+        return *ops;
 }
 ```
 
@@ -381,14 +356,14 @@ there's more a sofisticated solution, but mine works just fine). This is a fragm
 ```c
 
 struct module {
-    /*...*/
-    /* Sysfs stuff. */
-    struct module_kobject mkobj;
-    struct module_attribute *modinfo_attrs;
-    const char *version;
-    const char *srcversion;
-    struct kobject *holders_dir;
-    /*...*/
+        /*...*/
+        /* Sysfs stuff. */
+        struct module_kobject mkobj;
+        struct module_attribute *modinfo_attrs;
+        const char *version;
+        const char *srcversion;
+        struct kobject *holders_dir;
+        /*...*/
 }
 ```
 
@@ -396,11 +371,11 @@ It contains `struct module_kobject`. Let's look at this as well
 
 ```c
 struct module_kobject {
-	struct kobject kobj;
-	struct module *mod; /* <--- this is what we're looking for */
-	struct kobject *drivers_dir;
-	struct module_param_attrs *mp;
-	struct completion *kobj_completion;
+        struct kobject kobj;
+        struct module *mod; /* <--- this is what we're looking for */
+        struct kobject *drivers_dir;
+        struct module_param_attrs *mp;
+        struct completion *kobj_completion;
 } __randomize_layout;
 ```
 
@@ -415,20 +390,20 @@ the `__module_address` function to extract them.
 ```c
 struct module *__module_address(unsigned long addr)
 {
-	struct module *mod;
-
-	if (addr < module_addr_min || addr > module_addr_max)
-		return NULL;
-
-	module_assert_mutex_or_preempt();
-
-	mod = mod_find(addr);
-	if (mod) {
-		BUG_ON(!within_module(addr, mod));
-		if (mod->state == MODULE_STATE_UNFORMED)
-			mod = NULL;
-	}
-	return mod;
+        struct module *mod;
+    
+        if (addr < module_addr_min || addr > module_addr_max)
+                return NULL;
+    
+        module_assert_mutex_or_preempt();
+    
+        mod = mod_find(addr);
+        if (mod) {
+                BUG_ON(!within_module(addr, mod));
+                if (mod->state == MODULE_STATE_UNFORMED)
+                        mod = NULL;
+        }
+        return mod;
 }
 ```
 
@@ -460,20 +435,18 @@ sneaky rootkits.
 
 ```c
 while ((unsigned long) ptr < module_addr_max) {
-    ptr_mod = (struct module *) ptr;
+            ptr_mod = (struct module *) ptr;
 
-//    Make sure we're looking at valid addresses. Check the first and the last address of the potential module struct.
-    if (kern_addr_valid_((unsigned long) ptr_mod) &&
-        kern_addr_valid_((unsigned long) ptr_mod + sizeof(struct module))) {
-//        Check the struct module signature. This looks way too simple to be good, but it works.
-        if (ptr_mod == ptr_mod->mkobj.mod) {
-//            We found a valid module - now let's check if it's in the module list
-            if(lookup_module_by_name(ptr_mod->name) == NULL){
-                rk_warning("Looks like the \"%s\" module is hidden (found by a memory scan).", ptr_mod->name);
+            // Make sure we're looking at valid addresses. Check the first and the last address of the potential module struct.
+            if (kern_addr_valid_((unsigned long) ptr_mod) &&
+                kern_addr_valid_((unsigned long) ptr_mod + sizeof(struct module))) {
+                    // Check the struct module signature.
+                    if (ptr_mod == ptr_mod->mkobj.mod &&
+                        lookup_module_by_name(ptr_mod->name) == NULL) 
+                            rk_warning("Looks like the \"%s\" module is hidden (found by a memory scan).", ptr_mod->name);
+                    
             }
-        }
+            ptr += 0x10;
     }
-    ptr += 0x10;
-}
 ```
 
