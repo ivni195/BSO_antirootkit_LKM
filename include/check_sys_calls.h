@@ -1,12 +1,10 @@
 #ifndef BSO_ANTIROOTKIT_LKM_CHECK_SYS_CALLS_H
 #define BSO_ANTIROOTKIT_LKM_CHECK_SYS_CALLS_H
-#include <linux/unistd.h>
-#include "utils.h"
 #include "memory_prot.h"
+#include "utils.h"
+#include <linux/unistd.h>
 
 // Stuff for is_kernel_text
-
-
 
 
 #define IS_ENTRY_HOOKED(i) sys_call_table_saved[(i)] != sys_call_table[(i)]
@@ -46,4 +44,4 @@ void restore_sys_call_table(int action);
  */
 void cleanup_sys_call_table(void);
 
-#endif //BSO_ANTIROOTKIT_LKM_CHECK_SYS_CALLS_H
+#endif//BSO_ANTIROOTKIT_LKM_CHECK_SYS_CALLS_H

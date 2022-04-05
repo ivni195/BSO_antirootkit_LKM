@@ -11,4 +11,4 @@ ssize_t kobj_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf);
 ssize_t kobj_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count);
 
 
-#endif //BSO_ANTIROOTKIT_LKM_SYSFS_IF_H
+#endif//BSO_ANTIROOTKIT_LKM_SYSFS_IF_H

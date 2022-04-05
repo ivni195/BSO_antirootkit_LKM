@@ -1,8 +1,8 @@
 #ifndef BSO_ANTIROOTKIT_LKM_FTRACE_UTILS_H
 #define BSO_ANTIROOTKIT_LKM_FTRACE_UTILS_H
 
-#include <linux/ftrace.h>
 #include "utils.h"
+#include <linux/ftrace.h>
 
 /*
  * Hooking mechanism stolen from https://www.apriorit.com/dev-blog/546-hooking-linux-functions-2.
@@ -27,22 +27,21 @@
  *                      initialization is finished during installation of the hook
  */
 struct ftrace_hook {
-    const char *name;
-    void *function;
-    void *original;
+        const char *name;
+        void *function;
+        void *original;
 
-    unsigned long address;
-    struct ftrace_ops ops;
+        unsigned long address;
+        struct ftrace_ops ops;
 };
 
 
-
 // Helper macro to create ftrace_hook.
-#define HOOK(_name, _function, _original)                    \
-        {                                                    \
-            .name = (_name),                                 \
-            .function = (_function),                         \
-            .original = (_original),                         \
+#define HOOK(_name, _function, _original) \
+        {                                 \
+                .name = (_name),          \
+                .function = (_function),  \
+                .original = (_original),  \
         }
 
 bool lookup_helpers(void);
@@ -55,4 +54,4 @@ int fh_install_hook(struct ftrace_hook *hook);
 void fh_remove_hook(struct ftrace_hook *hook);
 
 
-#endif //BSO_ANTIROOTKIT_LKM_FTRACE_UTILS_H
+#endif//BSO_ANTIROOTKIT_LKM_FTRACE_UTILS_H
