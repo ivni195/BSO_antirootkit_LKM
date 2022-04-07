@@ -6,19 +6,19 @@
 #include <linux/kernel.h> // Types, macros, functions for the kernel
 #include <linux/slab.h> // Allocate/free kernel memory + read_cr0()
 
-/*
- * Workaround for overwriting cr0 register (instead of using write_cr0()).
- */
-inline void force_write_cr0(unsigned long val);
+static inline void force_write_cr0(unsigned long val)
+{
+	asm volatile("mov %0, %%cr0" : "+r"(val));
+}
 
-/*
- * Set the WP bit of the CR0 register.
- */
-void enable_memory_protection(void);
+static inline void enable_memory_protection(void)
+{
+	force_write_cr0(read_cr0() | (WP_BIT));
+}
 
-/*
- * Clear the WP bit of the CR0 register
- */
-void disable_memory_protection(void);
+static inline void disable_memory_protection(void)
+{
+	force_write_cr0(read_cr0() & (~WP_BIT));
+}
 
 #endif //BSO_ANTROOTKIT_LKM_MEMORY_PROT_H
