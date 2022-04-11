@@ -24,6 +24,13 @@ bool setup_checks(void)
 	}
 #endif
 
+#ifdef CHECK_IDT
+	if(!setup_int_check()) {
+		rk_warning("IDT check setup failed.");
+		return false;
+	}
+#endif
+
 	return true;
 }
 
@@ -34,14 +41,14 @@ void cleanup_checks(void)
 #endif
 }
 
-static void check_hidden_modules(void)
+void check_hidden_modules(void)
 {
 	rk_info("Running HIDDEN MODULES CHECK...");
 	compare_proc_sys();
 	signature_scan_memory();
 }
 
-static void check_sys_call_hooks(void)
+void check_sys_call_hooks(void)
 {
 	int action;
 	rk_info("Running SYSCALL HOOKS CHECK...");
@@ -49,7 +56,7 @@ static void check_sys_call_hooks(void)
 	restore_sys_call_table(action);
 }
 
-static void check_WP_bit(void)
+void check_WP_bit(void)
 {
 	rk_info("Running WP BIT CHECK...");
 	if (IS_WP_BIT_SET) {
@@ -61,18 +68,23 @@ static void check_WP_bit(void)
 	}
 }
 
-static void check_ftrace_hooks(void)
+void check_ftrace_hooks(void)
 {
 	rk_info("Running FTRACE HOOKS CHECK...");
 	scan_for_ftr_calls();
 }
 
-static void check_entry_syscall(void)
+void check_entry_syscall(void)
 {
 	int action;
 	rk_info("Running ENTRY SYSCALL CHECK...");
 	action = compare_entry_syscall();
 	restore_entry_syscall(action);
+}
+
+void check_idt(void)
+{
+	compare_idt();
 }
 
 void checks_run(void)
@@ -91,6 +103,9 @@ void checks_run(void)
 #endif
 #ifdef CHECK_ENTRY_SYSCALL
 	check_entry_syscall();
+#endif
+#ifdef CHECK_IDT
+	check_idt();
 #endif
 	rk_info("Finished running CHECKS.");
 	rk_info("------------------------");

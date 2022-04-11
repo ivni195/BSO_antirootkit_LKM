@@ -66,6 +66,11 @@ void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
 {
 	struct ftrace_hook *hook = container_of(ops, struct ftrace_hook, ops);
 
+//	to avoid recursive
+	if (module_addr_(parent_ip) == THIS_MODULE){
+		return;
+	}
+
 	// Go to the wrapper function
 	regs->ip = (unsigned long)hook->function;
 }
@@ -115,4 +120,33 @@ void fh_remove_hook(struct ftrace_hook *hook)
 	if (err) {
 		pr_debug("ftrace_set_filter_ip() failed: %d\n", err);
 	}
+}
+
+int fh_install_hooks(struct ftrace_hook *hooks, size_t count)
+{
+	int err;
+	size_t i;
+
+	for (i = 0 ; i < count ; i++)
+	{
+		err = fh_install_hook(&hooks[i]);
+		if(err)
+			goto error;
+	}
+	return 0;
+
+error:
+	while (i != 0)
+	{
+		fh_remove_hook(&hooks[--i]);
+	}
+	return err;
+}
+
+void fh_remove_hooks(struct ftrace_hook *hooks, size_t count)
+{
+	size_t i;
+
+	for (i = 0 ; i < count ; i++)
+		fh_remove_hook(&hooks[i]);
 }

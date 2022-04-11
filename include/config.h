@@ -8,11 +8,15 @@
  * Comment out checks that shouldn't be performed.
  */
 
-#define CHECK_SYS_CALL_HOOKS
+// in miliseconds
+#define PERIODIC_CHECK_INTERVAL 10000
+
+//#define CHECK_SYS_CALL_HOOKS
 #define CHECK_ENTRY_SYSCALL
 #define CHECK_WP_BIT
 #define CHECK_HIDDEN_MODULES
 #define CHECK_FTRACE_HOOKS
+#define CHECK_IDT
 
 // Add modules that you want to whitelist
 static const char whitelisted_mods[][MODULE_NAME_LEN] = {
@@ -24,6 +28,7 @@ static const char whitelisted_mods[][MODULE_NAME_LEN] = {
  * Only add fucntion that are compiled without "notrace".
  */
 static const char protected_funcs[][KSYM_NAME_LEN] = { "__x64_sys_kill",
-						       "kallsyms_lookup_name" };
+						       "kallsyms_lookup_name",
+						       "do_init_module" };
 
 #endif //BSO_ANTIROOTKIT_LKM_CONFIG

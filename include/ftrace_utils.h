@@ -51,4 +51,7 @@ void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
 int fh_install_hook(struct ftrace_hook *hook);
 void fh_remove_hook(struct ftrace_hook *hook);
 
+int fh_install_hooks(struct ftrace_hook *hooks, size_t count);
+void fh_remove_hooks(struct ftrace_hook *hooks, size_t count);
+
 #endif //BSO_ANTIROOTKIT_LKM_FTRACE_UTILS_H

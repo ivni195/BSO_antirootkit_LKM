@@ -35,12 +35,37 @@ extern module_address_t module_addr_;
 typedef int (*kern_addr_valid_t)(unsigned long addr);
 extern kern_addr_valid_t kern_addr_valid_;
 
-bool find_util_funcs(void);
+extern struct mutex *module_mutex_ptr;
+
+bool find_util_symbols(void);
 
 bool find_kallsyms_lookup_name(void);
 
-bool is_module_addr(struct module *mod, unsigned long addr);
-
 struct module *lookup_module_by_name(const char *mod_name);
+
+struct load_info {
+	const char *name;
+	/* pointer to module in temporary copy, freed at end of load_module() */
+	struct module *mod;
+	Elf_Ehdr *hdr;
+	unsigned long len;
+	Elf_Shdr *sechdrs;
+	char *secstrings, *strtab;
+	unsigned long symoffs, stroffs, init_typeoffs, core_typeoffs;
+	struct _ddebug *debug;
+	unsigned int num_debug;
+	bool sig_ok;
+#ifdef CONFIG_KALLSYMS
+	unsigned long mod_kallsyms_init_off;
+#endif
+#ifdef CONFIG_MODULE_DECOMPRESS
+	struct page **pages;
+	unsigned int max_pages;
+	unsigned int used_pages;
+#endif
+	struct {
+		unsigned int sym, str, mod, vers, info, pcpu;
+	} index;
+};
 
 #endif //BSO_ANTIROOTKIT_LKM_UTILS_H

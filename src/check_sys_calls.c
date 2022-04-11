@@ -23,23 +23,31 @@ bool setup_sys_call_check(void)
 {
 	sys_call_table =
 		(unsigned long *)kallsyms_lookup_name_("sys_call_table");
-	save_sys_call_table();
+
+	if(sys_call_table == NULL)
+		return false;
+
+	sys_call_table_saved =
+		kzalloc(sizeof(unsigned long) * __NR_syscall_max, GFP_KERNEL);
+
 	if (sys_call_table_saved == NULL)
 		return false;
 
+	save_sys_call_table();
+
 	non_core_addrs = kzalloc(sizeof(int) * __NR_syscall_max, GFP_KERNEL);
 
-	return !(sys_call_table == NULL || non_core_addrs == NULL ||
-		 core_kernel_text_ == NULL);
+	if (non_core_addrs == NULL){
+		kfree(sys_call_table_saved);
+		return false;
+	}
+
+	return true;
 }
 
 int save_sys_call_table(void)
 {
 	int i;
-	sys_call_table_saved =
-		kzalloc(sizeof(unsigned long) * __NR_syscall_max, GFP_KERNEL);
-	if (sys_call_table_saved == NULL || sys_call_table == NULL)
-		return 1;
 
 	for (i = 0; i < __NR_syscall_max; i++) {
 		sys_call_table_saved[i] = sys_call_table[i];

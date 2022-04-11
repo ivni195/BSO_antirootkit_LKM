@@ -5,6 +5,8 @@ core_kernel_text_t core_kernel_text_;
 module_address_t module_addr_;
 kern_addr_valid_t kern_addr_valid_;
 
+struct mutex *module_mutex_ptr;
+
 bool find_kallsyms_lookup_name(void)
 {
 	struct kprobe kp = { .symbol_name = "kallsyms_lookup_name" };
@@ -16,7 +18,7 @@ bool find_kallsyms_lookup_name(void)
 	return kallsyms_lookup_name_ != NULL;
 }
 
-bool find_util_funcs(void)
+bool find_util_symbols(void)
 {
 	core_kernel_text_ =
 		(core_kernel_text_t)kallsyms_lookup_name_("core_kernel_text");
@@ -25,30 +27,22 @@ bool find_util_funcs(void)
 	kern_addr_valid_ =
 		(kern_addr_valid_t)kallsyms_lookup_name_("kern_addr_valid");
 
+	module_mutex_ptr = (struct mutex *) kallsyms_lookup_name_("module_mutex");
+
+
 	return core_kernel_text_ != NULL && module_addr_ != NULL &&
 	       kern_addr_valid_ != NULL;
 }
 
 struct module *lookup_module_by_name(const char *mod_name)
 {
-	struct list_head *p;
 	struct module *mod;
-	list_for_each (p, THIS_MODULE->list.prev) {
-		mod = list_entry(p, struct module, list);
+
+	list_for_each_entry_rcu(mod, &THIS_MODULE->list, list,
+				 lockdep_is_held(module_mutex_ptr)) {
 		if (strncmp(mod_name, mod->name, strlen(mod_name)) == 0) {
 			return mod;
 		}
 	}
 	return NULL;
-}
-
-bool is_module_addr(struct module *mod, unsigned long addr)
-{
-	unsigned long start;
-	unsigned long end;
-
-	start = (unsigned long)mod->core_layout.base;
-	end = (unsigned long)(mod->core_layout.base + mod->core_layout.size);
-
-	return (start <= addr && end >= addr);
 }

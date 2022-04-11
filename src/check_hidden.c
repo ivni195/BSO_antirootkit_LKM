@@ -3,10 +3,14 @@
 static bool contains(struct list_head *proc_list, struct kobject *kobj)
 {
 	const char *kobj_name = kobj->name;
-	struct list_head *p, *tmp;
 	struct module *mod;
-	list_for_each_safe (p, tmp, proc_list) {
-		mod = container_of(p, struct module, list);
+
+	if (strncmp(kobj_name, THIS_MODULE->name, strlen(THIS_MODULE->name)) ==
+	    0) {
+		return true;
+	}
+
+	list_for_each_entry_rcu(mod, proc_list, list, lockdep_is_held(module_mutex_ptr)) {
 		if (strncmp(kobj_name, mod->name, strlen(kobj_name)) == 0)
 			return true;
 	}
@@ -20,16 +24,14 @@ void compare_proc_sys(void)
 	struct kset *kset = __this_module.mkobj.kobj.kset;
 	bool hidden_any = false;
 
-	//    Modules can be removed during iteration
 	list_for_each_safe (p_sys, tmp, &kset->list) {
 		kobj = container_of(p_sys, struct kobject, entry);
-		if (atomic_read(&kobj->kref.refcount.refs) > 2) {
-			if (!contains(THIS_MODULE->list.prev, kobj)) {
-				hidden_any = true;
-				rk_warning(
-					"Looks like \"%s\" module is hidden (present in sysfs, not present in procfs).",
-					kobj->name);
-			}
+		if (atomic_read(&kobj->kref.refcount.refs) > 2 &&
+		    !contains(&THIS_MODULE->list, kobj)) {
+			hidden_any = true;
+			rk_warning(
+				"Looks like \"%s\" module is hidden (present in sysfs, not present in procfs).",
+				kobj->name);
 		}
 	}
 
@@ -58,16 +60,17 @@ void signature_scan_memory(void)
 		// Make sure we're looking at valid addresses. Check the first and the last address of the potential module struct.
 		if (kern_addr_valid_((unsigned long)ptr_mod) &&
 		    kern_addr_valid_((unsigned long)ptr_mod +
-				     sizeof(struct module))) {
-			// Check the struct module signature.
-			if (ptr_mod == ptr_mod->mkobj.mod) {
-				// We found a valid module - now let's check if it's in the module list
-				if (lookup_module_by_name(ptr_mod->name) ==
-				    NULL) {
-					rk_warning(
-						"Looks like the \"%s\" module is hidden (found by a memory scan).",
-						ptr_mod->name);
-				}
+				     sizeof(struct module)) &&
+		    // Check the struct module signature.
+		    ptr_mod == ptr_mod->mkobj.mod) {
+			// We found a valid module - now let's check if it's in the module list
+			if (lookup_module_by_name(ptr_mod->name) == NULL &&
+			    // For some reason it doesn't see THIS_MODULE when traversing so check if the found module is THIS_MODULE
+			    strncmp(ptr_mod->name, THIS_MODULE->name,
+				    strlen(THIS_MODULE->name)) != 0) {
+				rk_warning(
+					"Looks like the \"%s\" module is hidden (found by a memory scan).",
+					ptr_mod->name);
 			}
 		}
 		ptr += 0x10;
