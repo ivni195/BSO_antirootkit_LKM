@@ -1,7 +1,6 @@
 #ifndef BSO_ANTROOTKIT_LKM_MEMORY_PROT_H
 #define BSO_ANTROOTKIT_LKM_MEMORY_PROT_H
 
-#include "check_wp_bit.h"
 #include "utils.h"
 #include <linux/kernel.h> // Types, macros, functions for the kernel
 #include <linux/slab.h> // Allocate/free kernel memory + read_cr0()

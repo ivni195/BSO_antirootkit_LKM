@@ -5,7 +5,6 @@
 #include "check_ftrace_hooks.h"
 #include "check_hidden.h"
 #include "check_sys_calls.h"
-#include "check_wp_bit.h"
 #include "check_idt.h"
 #include "config.h"
 
@@ -13,7 +12,6 @@ bool setup_checks(void);
 void cleanup_checks(void);
 
 void checks_run(void);
-
 
 void check_hidden_modules(void);
 void check_sys_call_hooks(void);

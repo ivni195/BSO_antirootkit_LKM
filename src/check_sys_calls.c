@@ -24,7 +24,7 @@ bool setup_sys_call_check(void)
 	sys_call_table =
 		(unsigned long *)kallsyms_lookup_name_("sys_call_table");
 
-	if(sys_call_table == NULL)
+	if (sys_call_table == NULL)
 		return false;
 
 	sys_call_table_saved =
@@ -37,7 +37,7 @@ bool setup_sys_call_check(void)
 
 	non_core_addrs = kzalloc(sizeof(int) * __NR_syscall_max, GFP_KERNEL);
 
-	if (non_core_addrs == NULL){
+	if (non_core_addrs == NULL) {
 		kfree(sys_call_table_saved);
 		return false;
 	}

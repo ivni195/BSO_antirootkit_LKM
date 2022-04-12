@@ -185,7 +185,7 @@ d:  48 89 e5                mov    rbp,rsp
 /* ... */
 ```
 
-The first 5-byte nop instruction was replaced by a call to an ftrace callback. This is the reason those 5 bytes are
+The first 5-byte nop instruction was replaced by a call to a ftrace callback. This is the reason those 5 bytes are
 there. If ftrace wants to hook a function, it replaces them with its own `call` instruction.
 
 #### Note on avoiding recursion
@@ -213,8 +213,8 @@ is: How do we find the callback address by only looking at the address of the ho
 
 #### Recovering callback address
 
-Ftrace doesn't jump directly into our callback. It jumps to a ftrace trampoline first.
-So let's take a look at how trampolines are created.
+Ftrace doesn't jump directly into our callback. It jumps to a ftrace trampoline first. So let's take a look at how
+trampolines are created.
 
 ```c
 static unsigned long
@@ -254,11 +254,10 @@ access to the registers (`struct pt_regs` to be precise)
 of the hooked function, so we can assume that the first branch of `if` is run. Also, we see that the pointer to
 hook's `ops` is saved on the trampoline.
 
-OK, but we need the trampoline address. We can calculate it easily knowing that
-the call instruction jumps to an address relative to the next instruction's address.
-The next instruction is at `fn_ptr + MCOUNT_INSN_SIZE`. The absolute call address
-offset is `*(int *) (fn_ptr + 1)` (note that we add one to jump over E8 call opcode
-to the actual relative address). So we find the trampoline address to be
+OK, but we need the trampoline address. We can calculate it easily knowing that the call instruction jumps to an address
+relative to the next instruction's address. The next instruction is at `fn_ptr + MCOUNT_INSN_SIZE`. The absolute call
+address offset is `*(int *) (fn_ptr + 1)` (note that we add one to jump over E8 call opcode to the actual relative
+address). So we find the trampoline address to be
 `fn_ptr + MCOUNT_INSN_SIZE + *(int *) (fn_ptr + 1)`
 
 We have the trampoline address, and we know where (within the trampoline) is the pointer to `ops`. Using those two
@@ -430,23 +429,55 @@ module_addr_max = *(unsigned long *) ((void *) module_addr_ + 0x1ca3b20);
 
 #### Putting it all together
 
-Now we can just scan the memory from `module_addr_min` to `module_addr_max`, work_fn for the signature and reveal some
-sneaky rootkits.
+Now we can just scan the memory from `module_addr_min` to `module_addr_max`, periodic_work_fn for the signature and
+reveal some sneaky rootkits.
 
 ```c
 while ((unsigned long) ptr < module_addr_max) {
-            ptr_mod = (struct module *) ptr;
-
-            // Make sure we're looking at valid addresses. Check the first and the last address of the potential module struct.
-            if (kern_addr_valid_((unsigned long) ptr_mod) &&
-                kern_addr_valid_((unsigned long) ptr_mod + sizeof(struct module))) {
-                    // Check the struct module signature.
-                    if (ptr_mod == ptr_mod->mkobj.mod &&
-                        lookup_module_by_name(ptr_mod->name) == NULL) 
-                            rk_warning("Looks like the \"%s\" module is hidden (found by a memory scan).", ptr_mod->name);
-                    
-            }
-            ptr += 0x10;
+        ptr_mod = (struct module *) ptr;
+    
+        // Make sure we're looking at valid addresses. Check the first and the last address of the potential module struct.
+        if (kern_addr_valid_((unsigned long) ptr_mod) &&
+            kern_addr_valid_((unsigned long) ptr_mod + sizeof(struct module))) {
+                // Check the struct module signature.
+                if (ptr_mod == ptr_mod->mkobj.mod &&
+                    lookup_module_by_name(ptr_mod->name) == NULL) 
+                        rk_warning("Looks like the \"%s\" module is hidden (found by a memory scan).", ptr_mod->name);
+                
+        }
+        ptr += 0x10;
     }
 ```
 
+## Interrupt Descriptor Table
+
+The Interrupt Descriptor Table (IDT) associates interrupts with interrupt handlers. To get the address of the IDT we can
+use `store_idt` function (it uses the `SIDT`
+assembly instruction). We receive a pointer to
+
+```c
+struct desc_ptr {
+	unsigned short size;
+	unsigned long address;
+} __attribute__((packed)) ;
+```
+
+Here we have the size and the address of the IDT. Using these, we can create a copy of IDT and monitor for any changes
+in the actual IDT.
+
+# Static code analysis
+
+The compiler (GCC) doesn't show any errors/warnings when compiling using the Makefile. I also used the CLion built-in
+code inspector which, among others, uses clang-tidy. The output showed only warnings concerning unused code, for example
+here:
+
+```c
+ssize_t run_checks_store(struct kobject *kobj, struct kobj_attribute *attr,
+		   const char *buf, size_t count)
+{
+        /*...*/
+}
+```
+
+The inspector pointed out that `kobj` and `attr` are never used, but they need to be there, because the function must
+have a certain signature. There weren't any severe warnings. I attach the full output to this repo. 

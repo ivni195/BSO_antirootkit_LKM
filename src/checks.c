@@ -25,7 +25,7 @@ bool setup_checks(void)
 #endif
 
 #ifdef CHECK_IDT
-	if(!setup_int_check()) {
+	if (!setup_int_check()) {
 		rk_warning("IDT check setup failed.");
 		return false;
 	}
@@ -59,7 +59,7 @@ void check_sys_call_hooks(void)
 void check_WP_bit(void)
 {
 	rk_info("Running WP BIT CHECK...");
-	if (IS_WP_BIT_SET) {
+	if ((read_cr0() & WP_BIT) == WP_BIT) {
 		rk_info("WP bit is set (as it should be).");
 	} else {
 		rk_warning(

@@ -21,16 +21,14 @@ void compare_idt(void)
 {
 	int i;
 	unsigned long real_addr, saved_addr;
-	for (i = 0; i < IDT_ENTRIES; i++){
+	for (i = 0; i < IDT_ENTRIES; i++) {
 		real_addr = gate_offset(&idt_real[i]);
 		saved_addr = gate_offset(&idt_saved[i]);
-		if (real_addr != saved_addr){
-			rk_warning("Found IDT overwrite. Restoring...");
+		if (real_addr != saved_addr) {
+			rk_warning("Found a IDT overwrite. Restoring...");
 			disable_memory_protection();
 			idt_real[i] = idt_saved[i];
 			enable_memory_protection();
 		}
 	}
 }
-
-

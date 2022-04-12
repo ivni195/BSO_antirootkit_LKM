@@ -5,18 +5,18 @@
 #include <linux/kprobes.h>
 #include <linux/slab.h>
 
+#define WP_BIT 0x10000
+
 // For dmesg logging
 #define rk_info(mess, ...)                                                     \
 	printk(KERN_INFO "antirootkit: " mess "\n", ##__VA_ARGS__)
 #define rk_warning(mess, ...)                                                  \
 	printk(KERN_WARNING "antirootkit: " mess "\n", ##__VA_ARGS__)
-#define rk_debug(mess, ...)                                                    \
-	printk(KERN_DEBUG "antirootkit: " mess "\n", ##__VA_ARGS__)
+#define rk_err(mess, ...)                                                      \
+	printk(KERN_ERR "antirootkit: " mess "\n", ##__VA_ARGS__)
 
 #define NUM_PROTECTED_FUNCS (sizeof(protected_funcs) / KSYM_NAME_LEN)
 #define NUM_WHITELISTED (sizeof(protected_funcs) / MODULE_NAME_LEN)
-
-typedef asmlinkage unsigned long (*pt_regs_t)(const struct pt_regs *regs);
 
 /*
  * The functions below are already declared in header files.
@@ -43,29 +43,6 @@ bool find_kallsyms_lookup_name(void);
 
 struct module *lookup_module_by_name(const char *mod_name);
 
-struct load_info {
-	const char *name;
-	/* pointer to module in temporary copy, freed at end of load_module() */
-	struct module *mod;
-	Elf_Ehdr *hdr;
-	unsigned long len;
-	Elf_Shdr *sechdrs;
-	char *secstrings, *strtab;
-	unsigned long symoffs, stroffs, init_typeoffs, core_typeoffs;
-	struct _ddebug *debug;
-	unsigned int num_debug;
-	bool sig_ok;
-#ifdef CONFIG_KALLSYMS
-	unsigned long mod_kallsyms_init_off;
-#endif
-#ifdef CONFIG_MODULE_DECOMPRESS
-	struct page **pages;
-	unsigned int max_pages;
-	unsigned int used_pages;
-#endif
-	struct {
-		unsigned int sym, str, mod, vers, info, pcpu;
-	} index;
-};
+struct load_info;
 
 #endif //BSO_ANTIROOTKIT_LKM_UTILS_H

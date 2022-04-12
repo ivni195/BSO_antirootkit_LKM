@@ -10,7 +10,8 @@ static bool contains(struct list_head *proc_list, struct kobject *kobj)
 		return true;
 	}
 
-	list_for_each_entry_rcu(mod, proc_list, list, lockdep_is_held(module_mutex_ptr)) {
+	list_for_each_entry_rcu (mod, proc_list, list,
+				 lockdep_is_held(module_mutex_ptr)) {
 		if (strncmp(kobj_name, mod->name, strlen(kobj_name)) == 0)
 			return true;
 	}
