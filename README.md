@@ -3,6 +3,17 @@
 This is a simple antirootkit system created for a university course. It was created and tested on Ubuntu 20.04 with
 kernel 5.13.0 (x86_64).
 
+# Table of contents
+1. [Install](#install)
+2. [Kernel integrity checks](#kernel-integrity-checks)
+   1. [Syscall hooks](#syscall-hooks)
+   2. [Ftrace hooks](#checking-for-ftrace-hooks)
+   3. [WP bit](#checking-the-writeprotect-bit-of-the-cr0-register)
+   4. [Syscall entry point](#checking-the-entry_syscall_64)
+   5. [Hidden modules](#checking-the-hidden-modules)
+   6. [Interrupt Descriptor Table](#interrupt-descriptor-table)
+3. [Static code analysis](#static-code-analysis)
+
 # Install
 
 ## Be careful!
