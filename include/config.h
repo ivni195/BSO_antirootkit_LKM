@@ -29,6 +29,7 @@ static const char whitelisted_mods[][MODULE_NAME_LEN] = {
  */
 static const char protected_funcs[][KSYM_NAME_LEN] = { "__x64_sys_kill",
 						       "kallsyms_lookup_name",
-						       "do_init_module" };
+						       "load_module",
+						       "__x64_sys_read" };
 
 #endif //BSO_ANTIROOTKIT_LKM_CONFIG

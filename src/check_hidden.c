@@ -46,12 +46,17 @@ void signature_scan_memory(void)
 	// Start and end of the module memory range.
 	unsigned long module_addr_min;
 	unsigned long module_addr_max;
-
+	unsigned long min_offset, max_offset;
+	void *mod_addr_ptr = module_addr_;
 	void *ptr;
 	struct module *ptr_mod;
+
 	// You can find these offsets (they are relative to RIP) after disassembling the __module_address function.
-	module_addr_min = *(unsigned long *)((void *)module_addr_ + 0x1ca3b18);
-	module_addr_max = *(unsigned long *)((void *)module_addr_ + 0x1ca3b20);
+	min_offset = *(int *)(mod_addr_ptr + 0x9);
+	max_offset = *(int *)(mod_addr_ptr + 0x19);
+
+	module_addr_min = *(unsigned long *)((void *)module_addr_ + min_offset + 0xd);
+	module_addr_max = *(unsigned long *)((void *)module_addr_ + max_offset + 0x1d);
 
 	ptr = (void *)module_addr_min;
 
@@ -63,8 +68,8 @@ void signature_scan_memory(void)
 		    kern_addr_valid_((unsigned long)ptr_mod +
 				     sizeof(struct module)) &&
 		    // Check the struct module signature.
-		    ptr_mod == ptr_mod->mkobj.mod) {
-			// We found a valid module - now let's check if it's in the module list
+		    ptr_mod == ptr_mod->mkobj.mod
+			) {
 			if (lookup_module_by_name(ptr_mod->name) == NULL &&
 			    // For some reason it doesn't see THIS_MODULE when traversing so check if the found module is THIS_MODULE
 			    strncmp(ptr_mod->name, THIS_MODULE->name,
@@ -73,6 +78,8 @@ void signature_scan_memory(void)
 					"Looks like the \"%s\" module is hidden (found by a memory scan).",
 					ptr_mod->name);
 			}
+
+			// We found a valid module - now let's check if it's in the module list
 		}
 		ptr += 0x10;
 	}

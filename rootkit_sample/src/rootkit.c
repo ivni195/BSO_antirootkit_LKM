@@ -7,7 +7,6 @@
 #include <linux/dirent.h>
 #include "memory_prot.h"
 #include "utils.h"
-#include "hide_module.h"
 #include "my_syscalls.h"
 #include "ftrace_utils.h"
 
